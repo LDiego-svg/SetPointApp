@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 .DS_Store
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -17,11 +18,6 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -47,17 +43,32 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
+# Environment files
 *.env
 *.env.*
 
-#firebase
+# Android / Keystore / Local properties
+**/android/local.properties
+**/android/.gradle/
+**/android/captures/
+key.properties
+**/*.keystore
+**/*.jks
+
+# VS Code
+.vscode/
+
+# AI Agent / Dev tools (Antigravity & Gemini skills)
+.agents/
+skills-lock.json
+
+# Firebase Admin / Service Accounts / Credentials
 *firebase-adminsdk*.json
 *service-account*.json
 clave-firebase.json
 
-# Archivos de configuración local de Android / Gradle
-**/android/local.properties
-**/android/.gradle/
-
-# Preferencias personales de VS Code
-.vscode/
+# Firebase client configuration (Public repo security)
+firebase.json
+**/google-services.json
+**/GoogleService-Info.plist
+lib/firebase_options.dart

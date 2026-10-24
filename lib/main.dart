@@ -1,82 +1,48 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'core/theme/app_colors.dart';
-import 'features/scoreboard/scoreboard_screen.dart';
-import 'features/statistics/stats_screen.dart';
-import 'features/training/training_screen.dart';
 
-void main() {
-  runApp(const SetPointApp());
+import 'core/theme/app_theme.dart';
+import 'data/firestore_match_repository.dart';
+import 'data/match_repository.dart';
+import 'features/home/home_shell.dart';
+import 'features/setup/firebase_setup_screen.dart';
+import 'firebase_options.dart';
 
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  MatchRepository? repository;
+  Object? initError;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    repository = FirestoreMatchRepository();
+  } catch (e) {
+    initError = e;
+  }
+
+  runApp(SetPointApp(repository: repository, initError: initError));
 }
 
 class SetPointApp extends StatelessWidget {
-  const SetPointApp({super.key});
+  final MatchRepository? repository;
+  final Object? initError;
+
+  const SetPointApp({super.key, this.repository, this.initError});
 
   @override
   Widget build(BuildContext context) {
+    final repo = repository;
     return MaterialApp(
       title: 'SetPoint',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: AppColors.background,
-      ),
-      home: const MainNavigationScreen(),
-    );
-  }
-}
-
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
-
-  @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-}
-
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = const [
-    ScoreboardScreen(),
-    StatsScreen(),
-    TrainingScreen(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'SetPoint',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-      ),
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.scoreboard_outlined),
-            activeIcon: Icon(Icons.scoreboard),
-            label: 'Marcador',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            activeIcon: Icon(Icons.bar_chart),
-            label: 'Estadísticas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined),
-            activeIcon: Icon(Icons.fitness_center),
-            label: 'Entrenamiento',
-          ),
-        ],
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
+      home: repo == null
+          ? FirebaseSetupScreen(error: initError)
+          : RepositoryScope(repository: repo, child: const HomeShell()),
     );
   }
 }
