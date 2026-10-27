@@ -41,6 +41,43 @@ class SeedData {
         ],
       );
 
+  static TeamInfo fimeTeam() => const TeamInfo(
+        id: 'fime',
+        name: 'FIME',
+        shortName: 'FIM',
+        colorValue: 0xFF007A33,
+        players: [
+          TeamPlayer(dorsal: 8, name: 'D. Villarreal', role: 'Armador'),
+          TeamPlayer(dorsal: 11, name: 'R. Elizondo', role: 'Opuesto'),
+          TeamPlayer(dorsal: 15, name: 'M. Garza', role: 'Central'),
+          TeamPlayer(dorsal: 4, name: 'A. Rodríguez', role: 'Banda'),
+          TeamPlayer(dorsal: 1, name: 'J. Hernández', role: 'Líbero'),
+          TeamPlayer(dorsal: 19, name: 'C. Morales', role: 'Banda'),
+        ],
+      );
+
+  static TeamInfo facpyaTeam() => const TeamInfo(
+        id: 'facpya',
+        name: 'FACPYA',
+        shortName: 'FAC',
+        colorValue: 0xFF9E1B32,
+        players: [
+          TeamPlayer(dorsal: 6, name: 'E. González', role: 'Armador'),
+          TeamPlayer(dorsal: 13, name: 'H. Ramírez', role: 'Opuesto'),
+          TeamPlayer(dorsal: 16, name: 'O. Castillo', role: 'Central'),
+          TeamPlayer(dorsal: 9, name: 'I. Domínguez', role: 'Banda'),
+          TeamPlayer(dorsal: 3, name: 'N. Vargas', role: 'Líbero'),
+          TeamPlayer(dorsal: 17, name: 'B. Flores', role: 'Banda'),
+        ],
+      );
+
+  static List<TeamInfo> allTeams() => [
+        homeTeam(),
+        awayTeam(),
+        fimeTeam(),
+        facpyaTeam(),
+      ];
+
   static List<PlayerPosition> _lineup(TeamInfo team) => [
         for (var i = 0; i < team.players.length && i < 6; i++)
           PlayerPosition(
@@ -52,9 +89,9 @@ class SeedData {
       ];
 
   /// Fecha de inicio programada: día 24 a las 8:30 AM (hora local).
-  static DateTime scheduledStartTime() {
+  static DateTime scheduledStartTime([int hour = 8, int minute = 30]) {
     final now = DateTime.now();
-    return DateTime(now.year, now.month, 24, 8, 30);
+    return DateTime(now.year, now.month, 24, hour, minute);
   }
 
   static MatchModel match(
@@ -62,13 +99,16 @@ class SeedData {
     TeamInfo home,
     TeamInfo away, {
     String id = 'partido_demo',
+    String stage = 'Final Conferencia Norte, jornada 14',
+    String venue = 'Gimnasio Luis E. Todd, Monterrey',
+    DateTime? startTime,
   }) {
     return MatchModel(
       id: id,
       tournament: tournament,
-      stage: 'Final Conferencia Norte, jornada 14',
-      venue: 'Gimnasio Luis E. Todd, Monterrey',
-      startTime: scheduledStartTime(),
+      stage: stage,
+      venue: venue,
+      startTime: startTime ?? scheduledStartTime(),
       localTeam: home,
       visitTeam: away,
       currentSet: 1,
@@ -86,5 +126,26 @@ class SeedData {
       localLineup: _lineup(home),
       visitLineup: _lineup(away),
     );
+  }
+
+  static MatchModel fimeVsFacpyaMatch([TournamentInfo? t]) {
+    final tournament = t ?? SeedData.tournament();
+    return match(
+      tournament,
+      fimeTeam(),
+      facpyaTeam(),
+      id: 'fime_vs_facpya',
+      stage: 'Clásico Intrauniversitario, jornada 14',
+      venue: 'Gimnasio Cayetano Garza, UANL',
+      startTime: scheduledStartTime(10, 30),
+    );
+  }
+
+  static List<MatchModel> allMatches([TournamentInfo? t]) {
+    final tournament = t ?? SeedData.tournament();
+    return [
+      match(tournament, homeTeam(), awayTeam()),
+      fimeVsFacpyaMatch(tournament),
+    ];
   }
 }

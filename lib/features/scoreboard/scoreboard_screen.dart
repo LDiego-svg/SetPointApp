@@ -35,6 +35,9 @@ class ScoreboardScreen extends StatelessWidget {
     controller.addPoint(isLocal, actionType);
 
     final messenger = ScaffoldMessenger.of(context);
+    final endedSetDuration = formatDurationSeconds(
+      _match.setsHistory[previousSet - 1].durationSeconds,
+    );
     if (_match.isMatchFinished) {
       final winner = _match.localSetsWon > _match.visitSetsWon
           ? _match.localTeamName
@@ -43,7 +46,8 @@ class ScoreboardScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             'Partido terminado. Gana $winner '
-            '${_match.localSetsWon}-${_match.visitSetsWon}',
+            '${_match.localSetsWon}-${_match.visitSetsWon} '
+            '(Set $previousSet: $endedSetDuration)',
           ),
         ),
       );
@@ -51,7 +55,8 @@ class ScoreboardScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Set $previousSet terminado. Empieza el set ${_match.currentSet}.',
+            'Set $previousSet terminado en $endedSetDuration. '
+            'Empieza el set ${_match.currentSet}.',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -76,6 +81,8 @@ class ScoreboardScreen extends StatelessWidget {
                 _buildSetsTable(context),
                 const SizedBox(height: 12),
                 _buildPointByPoint(context),
+                const SizedBox(height: 12),
+                _buildMatchInfoCard(context),
               ],
             ),
           ),
@@ -84,7 +91,7 @@ class ScoreboardScreen extends StatelessWidget {
     );
   }
 
-  // 1. REGISTRO DE PUNTOS + DESHACER
+  // 1. REGISTRO DE PUNTOS + RELOJ DE SET + DESHACER
   Widget _buildScoringCard(BuildContext context) {
     final sp = context.sp;
     final m = _match;
@@ -106,18 +113,79 @@ class ScoreboardScreen extends StatelessWidget {
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                'El partido terminó. Usa Deshacer si necesitas corregir el último punto.',
+                'El partido terminó (tiempo total: '
+                '${formatDurationSeconds(m.totalMatchElapsedSeconds)}). '
+                'Usa Deshacer si necesitas corregir el último punto.',
                 style: context.type.bodyMedium?.copyWith(color: sp.muted),
               ),
             )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _teamActions(context, isLocal: true)),
-                const SizedBox(width: 12),
-                Expanded(child: _teamActions(context, isLocal: false)),
+                if (m.isUpcoming) ...[
+                  _buildUpcomingBanner(context),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _teamActions(context, isLocal: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _teamActions(context, isLocal: false)),
+                  ],
+                ),
               ],
             ),
+    );
+  }
+
+  Widget _buildUpcomingBanner(BuildContext context) {
+    final sp = context.sp;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: sp.brand.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: sp.brand.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Partido por empezar',
+                  style: TextStyle(
+                    color: sp.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                ),
+                Text(
+                  'Inicia el partido para arrancar el reloj del 1.º set.',
+                  style: context.type.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: controller.startMatch,
+            style: FilledButton.styleFrom(
+              backgroundColor: sp.brand,
+              foregroundColor: sp.onBrand,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+            label: const Text(
+              'Iniciar partido',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -164,7 +232,7 @@ class ScoreboardScreen extends StatelessWidget {
     );
   }
 
-  // 2. MARCADOR POR SETS
+  // 2. MARCADOR POR SETS + DURACIÓN POR SET
   Widget _buildSetsTable(BuildContext context) {
     final sp = context.sp;
     final m = _match;
@@ -199,14 +267,13 @@ class ScoreboardScreen extends StatelessWidget {
             ),
             for (final s in m.setsHistory)
               SizedBox(
-                width: 34,
+                width: 42,
                 child: Builder(builder: (context) {
                   final played = s.isCompleted ||
-                      (s.setNumber == m.currentSet && !m.isMatchFinished);
+                      (s.setNumber == m.currentSet && m.isLive);
                   final score = isLocal ? s.localScore : s.visitScore;
                   final opp = isLocal ? s.visitScore : s.localScore;
-                  final current =
-                      s.setNumber == m.currentSet && !m.isMatchFinished;
+                  final current = s.setNumber == m.currentSet && m.isLive;
                   final won = s.isCompleted && score > opp;
                   return Text(
                     played ? '$score' : '',
@@ -223,15 +290,82 @@ class ScoreboardScreen extends StatelessWidget {
                 }),
               ),
             SizedBox(
-              width: 40,
+              width: 46,
               child: Text(
-                '$setsWon',
+                m.isUpcoming ? '–' : '$setsWon',
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  color: sp.ink,
+                  color: m.isUpcoming ? sp.faint : sp.ink,
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                   fontFeatures: kTabular,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget durationRow() {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Duración',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: sp.muted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            for (final s in m.setsHistory)
+              SizedBox(
+                width: 42,
+                child: Builder(builder: (context) {
+                  final current = s.setNumber == m.currentSet && m.isLive;
+                  final played = s.isCompleted || current;
+                  final secs = m.setElapsedSeconds(s.setNumber);
+                  if (!played) return const SizedBox.shrink();
+                  return FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        formatDurationSeconds(secs),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: current ? sp.live : sp.muted,
+                          fontWeight:
+                              current ? FontWeight.w700 : FontWeight.w600,
+                          fontSize: 11.5,
+                          fontFeatures: kTabular,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            SizedBox(
+              width: 46,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  m.isUpcoming
+                      ? '00:00'
+                      : formatDurationSeconds(m.totalMatchElapsedSeconds),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: sp.muted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    fontFeatures: kTabular,
+                  ),
                 ),
               ),
             ),
@@ -249,21 +383,18 @@ class ScoreboardScreen extends StatelessWidget {
               const Expanded(child: SizedBox()),
               for (var i = 1; i <= 5; i++)
                 SizedBox(
-                  width: 34,
+                  width: 42,
                   child: Text(
                     '$i',
                     textAlign: TextAlign.center,
                     style: head.copyWith(
-                      color: i == m.currentSet && !m.isMatchFinished
-                          ? sp.live
-                          : null,
+                      color: i == m.currentSet && m.isLive ? sp.live : null,
                     ),
                   ),
                 ),
               SizedBox(
-                width: 40,
-                child:
-                    Text('Sets', textAlign: TextAlign.right, style: head),
+                width: 46,
+                child: Text('Sets', textAlign: TextAlign.right, style: head),
               ),
             ],
           ),
@@ -271,6 +402,8 @@ class ScoreboardScreen extends StatelessWidget {
           row(true),
           const Divider(),
           row(false),
+          const Divider(),
+          durationRow(),
         ],
       ),
     );
@@ -310,6 +443,100 @@ class ScoreboardScreen extends StatelessWidget {
                 ],
               ],
             ),
+    );
+  }
+
+  String _formatDateAndTime(DateTime t) {
+    final dd = t.day.toString().padLeft(2, '0');
+    final mm = t.month.toString().padLeft(2, '0');
+    final yyyy = t.year;
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    final period = t.hour < 12 ? 'AM' : 'PM';
+    return '$dd/$mm/$yyyy  •  $h:$m $period';
+  }
+
+  // 4. DETALLES DEL PARTIDO (FECHA, SEDE, COMPETICIÓN ESTILO SOFASCORE)
+  Widget _buildMatchInfoCard(BuildContext context) {
+    final sp = context.sp;
+    final m = _match;
+    final competitionLabel = [
+      m.tournament.name,
+      if (m.tournament.category.isNotEmpty) m.tournament.category,
+      if (m.stage.isNotEmpty) m.stage,
+    ].join(', ');
+
+    Widget infoRow({
+      required IconData icon,
+      required String label,
+      required String value,
+      Color? iconColor,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor ?? sp.muted),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: context.type.labelSmall?.copyWith(
+                      color: sp.muted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: sp.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: kTabular,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: sp.card,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          infoRow(
+            icon: Icons.event_rounded,
+            label: 'Fecha y hora',
+            value: _formatDateAndTime(m.startTime),
+          ),
+          if (m.venue.isNotEmpty) ...[
+            const Divider(),
+            infoRow(
+              icon: Icons.location_on_outlined,
+              label: 'Lugar',
+              value: m.venue,
+            ),
+          ],
+          const Divider(),
+          infoRow(
+            icon: Icons.emoji_events_outlined,
+            iconColor: sp.brand,
+            label: 'Competición',
+            value: competitionLabel,
+          ),
+        ],
+      ),
     );
   }
 }

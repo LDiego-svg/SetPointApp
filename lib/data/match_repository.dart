@@ -42,11 +42,21 @@ List<MatchModel> buildMatches({
         tournaments: tournamentInfos,
       ),
   ];
-  // En vivo primero, luego por hora de inicio.
-  list.sort((a, b) {
-    if (a.isMatchFinished != b.isMatchFinished) {
-      return a.isMatchFinished ? 1 : -1;
+  // En vivo primero, luego por empezar, luego finalizados; dentro de cada grupo por hora.
+  int statusOrder(MatchStatus s) {
+    switch (s) {
+      case MatchStatus.live:
+        return 0;
+      case MatchStatus.upcoming:
+        return 1;
+      case MatchStatus.finished:
+        return 2;
     }
+  }
+
+  list.sort((a, b) {
+    final cmp = statusOrder(a.status).compareTo(statusOrder(b.status));
+    if (cmp != 0) return cmp;
     return a.startTime.compareTo(b.startTime);
   });
   return list;

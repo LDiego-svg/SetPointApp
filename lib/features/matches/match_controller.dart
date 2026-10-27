@@ -24,6 +24,7 @@ class MatchController extends ChangeNotifier {
   String? saveError;
 
   StreamSubscription<MatchModel?>? _sub;
+  Timer? _clockTicker;
 
   MatchController({
     required this.repository,
@@ -31,6 +32,12 @@ class MatchController extends ChangeNotifier {
     MatchModel? initial,
   }) : match = initial {
     loading = initial == null;
+    _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      final m = match;
+      if (m != null && m.isTimerRunning) {
+        notifyListeners();
+      }
+    });
     _sub = repository.watchMatch(matchId).listen(
       (remote) {
         loading = false;
@@ -63,6 +70,22 @@ class MatchController extends ChangeNotifier {
       saveError = 'No se pudo guardar en la base de datos: $e';
       notifyListeners();
     }
+  }
+
+  void startMatch() {
+    final m = match;
+    if (m == null || !m.isUpcoming) return;
+    m.startMatch();
+    notifyListeners();
+    _persist();
+  }
+
+  void toggleTimer() {
+    final m = match;
+    if (m == null || !m.isLive) return;
+    m.toggleTimer();
+    notifyListeners();
+    _persist();
   }
 
   void addPoint(bool isLocal, PointActionType action) {
@@ -99,7 +122,7 @@ class MatchController extends ChangeNotifier {
     required int visitSets,
     required int localPoints,
     required int visitPoints,
-    required bool isFinished,
+    required MatchStatus status,
     required String recentEvent,
   }) async {
     final m = match;
@@ -119,7 +142,29 @@ class MatchController extends ChangeNotifier {
     m.visitSetsWon = visitSets.clamp(0, 3);
     m.localPoints = localPoints.clamp(0, 99);
     m.visitPoints = visitPoints.clamp(0, 99);
-    m.isMatchFinished = isFinished;
+
+    switch (status) {
+      case MatchStatus.upcoming:
+        m.isMatchStarted = false;
+        m.isMatchFinished = false;
+        m.setStartedAt = null;
+        break;
+      case MatchStatus.live:
+        m.isMatchStarted = true;
+        m.isMatchFinished = false;
+        m.setStartedAt ??= DateTime.now();
+        break;
+      case MatchStatus.finished:
+        if (m.setStartedAt != null) {
+          m.setsHistory[m.currentSet - 1].durationSeconds =
+              m.setElapsedSeconds(m.currentSet);
+        }
+        m.isMatchStarted = true;
+        m.isMatchFinished = true;
+        m.setStartedAt = null;
+        break;
+    }
+
     m.recentEvent = recentEvent.trim();
     m.setsHistory[m.currentSet - 1].localScore = m.localPoints;
     m.setsHistory[m.currentSet - 1].visitScore = m.visitPoints;
@@ -140,6 +185,7 @@ class MatchController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _clockTicker?.cancel();
     _sub?.cancel();
     super.dispose();
   }

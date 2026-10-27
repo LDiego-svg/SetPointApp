@@ -53,7 +53,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     final visitSetsCtrl = TextEditingController(text: '${m.visitSetsWon}');
     final localPtsCtrl = TextEditingController(text: '${m.localPoints}');
     final visitPtsCtrl = TextEditingController(text: '${m.visitPoints}');
-    bool isFinished = m.isMatchFinished;
+    MatchStatus selectedStatus = m.status;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -230,14 +230,35 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                         isDense: true,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Partido finalizado (isFinished)'),
-                      value: isFinished,
-                      onChanged: (v) => setModalState(() => isFinished = v),
-                    ),
                     const SizedBox(height: 12),
+                    Text(
+                      'Estado del partido (status)',
+                      style: sheetCtx.type.labelMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    SegmentedButton<MatchStatus>(
+                      segments: const [
+                        ButtonSegment(
+                          value: MatchStatus.upcoming,
+                          label: Text('Por empezar'),
+                          icon: Icon(Icons.schedule_rounded, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: MatchStatus.live,
+                          label: Text('En vivo'),
+                          icon: Icon(Icons.play_circle_outline_rounded, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: MatchStatus.finished,
+                          label: Text('Finalizado'),
+                          icon: Icon(Icons.flag_rounded, size: 16),
+                        ),
+                      ],
+                      selected: {selectedStatus},
+                      onSelectionChanged: (s) =>
+                          setModalState(() => selectedStatus = s.first),
+                    ),
+                    const SizedBox(height: 16),
                     FilledButton(
                       onPressed: () async {
                         Navigator.pop(sheetCtx);
@@ -257,7 +278,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                               int.tryParse(localPtsCtrl.text) ?? m.localPoints,
                           visitPoints:
                               int.tryParse(visitPtsCtrl.text) ?? m.visitPoints,
-                          isFinished: isFinished,
+                          status: selectedStatus,
                           recentEvent: recentCtrl.text,
                         );
                       },
@@ -352,7 +373,9 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
             ),
             body: NestedScrollView(
               headerSliverBuilder: (context, _) => [
-                SliverToBoxAdapter(child: _ScoreHeader(match: m)),
+                SliverToBoxAdapter(
+                  child: _ScoreHeader(match: m, controller: c),
+                ),
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _TabBarDelegate(context.sp.card),
@@ -402,7 +425,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
 /// Texto de alerta de punto de set / partido, o null si no aplica.
 String? setPointAlert(MatchModel m) {
-  if (m.isMatchFinished) return null;
+  if (!m.isLive) return null;
   final target = m.targetPointsForCurrentSet;
   final l = m.localPoints;
   final v = m.visitPoints;
@@ -421,48 +444,30 @@ String? setPointAlert(MatchModel m) {
 
 class _ScoreHeader extends StatelessWidget {
   final MatchModel match;
-  const _ScoreHeader({required this.match});
-
-  String _formatSchedule(DateTime t) {
-    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
-    final m = t.minute.toString().padLeft(2, '0');
-    final period = t.hour < 12 ? 'AM' : 'PM';
-    return 'Día ${t.day} · $h:$m $period';
-  }
+  final MatchController controller;
+  const _ScoreHeader({required this.match, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     final sp = context.sp;
     final m = match;
-    final live = !m.isMatchFinished;
     final alert = setPointAlert(m);
     final finishedSets = m.setsHistory.where((s) => s.isCompleted).toList();
 
     return Container(
       color: sp.card,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  [
-                    _formatSchedule(m.startTime),
-                    if (m.venue.isNotEmpty) m.venue,
-                  ].join(' · '),
-                  textAlign: TextAlign.center,
-                  style: context.type.labelSmall?.copyWith(color: sp.muted),
-                ),
-              ),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: _TeamColumn(match: m, isLocal: true)),
                   SizedBox(
-                    width: 150,
+                    width: 170,
                     child: Column(
                       children: [
                         Row(
@@ -470,7 +475,9 @@ class _ScoreHeader extends StatelessWidget {
                           children: [
                             _AnimatedNumber(
                               value: m.localSetsWon,
-                              style: context.type.displaySmall!,
+                              style: context.type.displaySmall!.copyWith(
+                                color: m.isUpcoming ? sp.faint : sp.ink,
+                              ),
                             ),
                             Padding(
                               padding:
@@ -481,26 +488,75 @@ class _ScoreHeader extends StatelessWidget {
                             ),
                             _AnimatedNumber(
                               value: m.visitSetsWon,
-                              style: context.type.displaySmall!,
+                              style: context.type.displaySmall!.copyWith(
+                                color: m.isUpcoming ? sp.faint : sp.ink,
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        if (live) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const LiveDot(),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${m.currentSet}.º set',
-                                style: TextStyle(
-                                  color: sp.live,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                        if (m.isUpcoming) ...[
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Por empezar',
+                                  style: TextStyle(
+                                    color: sp.brand,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  '00:00',
+                                  style: TextStyle(
+                                    color: sp.faint,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures: kTabular,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (m.isLive) ...[
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const LiveDot(),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${m.currentSet}.º set',
+                                  style: TextStyle(
+                                    color: sp.live,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Pressable(
+                                  onTap: controller.toggleTimer,
+                                  child: Text(
+                                    formatDurationSeconds(
+                                      m.currentSetElapsedSeconds,
+                                    ),
+                                    style: TextStyle(
+                                      color: m.isTimerRunning
+                                          ? sp.live
+                                          : sp.muted,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      fontFeatures: kTabular,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 4),
                           FittedBox(
@@ -524,15 +580,36 @@ class _ScoreHeader extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ] else
-                          Text(
-                            'Finalizado',
-                            style: TextStyle(
-                              color: sp.muted,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                        ] else ...[
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Finalizado',
+                                  style: TextStyle(
+                                    color: sp.muted,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  formatDurationSeconds(
+                                    m.totalMatchElapsedSeconds,
+                                  ),
+                                  style: TextStyle(
+                                    color: sp.muted,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    fontFeatures: kTabular,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -548,7 +625,7 @@ class _ScoreHeader extends StatelessWidget {
                   children: [
                     for (final s in finishedSets)
                       Text(
-                        '${s.localScore}-${s.visitScore}',
+                        '${s.localScore}-${s.visitScore} (${formatDurationSeconds(s.durationSeconds)})',
                         style: context.type.labelMedium
                             ?.copyWith(fontFeatures: kTabular),
                       ),
@@ -613,8 +690,7 @@ class _TeamColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final sp = context.sp;
     final team = isLocal ? match.localTeam : match.visitTeam;
-    final serving =
-        !match.isMatchFinished && match.isLocalServing == isLocal;
+    final serving = match.isLive && match.isLocalServing == isLocal;
     return Column(
       children: [
         Stack(

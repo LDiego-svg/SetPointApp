@@ -1,3 +1,59 @@
+enum MatchStatus {
+  upcoming,
+  live,
+  finished,
+}
+
+extension MatchStatusExtension on MatchStatus {
+  String get label {
+    switch (this) {
+      case MatchStatus.upcoming:
+        return 'Por empezar';
+      case MatchStatus.live:
+        return 'En vivo';
+      case MatchStatus.finished:
+        return 'Finalizado';
+    }
+  }
+
+  static MatchStatus parse(
+    Object? raw, {
+    required bool isStarted,
+    required bool isFinished,
+  }) {
+    if (isFinished) return MatchStatus.finished;
+    if (raw is String) {
+      final clean = raw.trim().toLowerCase();
+      if (clean == 'finished' || clean == 'finalizado') {
+        return MatchStatus.finished;
+      }
+      if (clean == 'live' || clean == 'en_vivo' || clean == 'envivo') {
+        return MatchStatus.live;
+      }
+      if (clean == 'upcoming' ||
+          clean == 'not_started' ||
+          clean == 'por_empezar') {
+        return MatchStatus.upcoming;
+      }
+    }
+    return isStarted ? MatchStatus.live : MatchStatus.upcoming;
+  }
+}
+
+/// Formatea segundos como `MM:SS` (o `H:MM:SS` si supera una hora).
+String formatDurationSeconds(int totalSeconds) {
+  final safe = totalSeconds < 0 ? 0 : totalSeconds;
+  final hours = safe ~/ 3600;
+  final minutes = (safe % 3600) ~/ 60;
+  final seconds = safe % 60;
+  final mm = minutes.toString().padLeft(2, '0');
+  final ss = seconds.toString().padLeft(2, '0');
+  if (hours > 0) {
+    return '$hours:$mm:$ss';
+  }
+  return '$mm:$ss';
+}
+
 enum PointActionType {
   attack,
   block,
@@ -397,6 +453,10 @@ class SetStatsData {
   int visitScore;
   bool isCompleted;
 
+  /// Duración acumulada del set en segundos. Cuando el set termina, guarda el
+  /// tiempo total que duró ese set.
+  int durationSeconds;
+
   int localAttacks;
   int visitAttacks;
 
@@ -417,6 +477,7 @@ class SetStatsData {
     this.localScore = 0,
     this.visitScore = 0,
     this.isCompleted = false,
+    this.durationSeconds = 0,
     this.localAttacks = 0,
     this.visitAttacks = 0,
     this.localBlocks = 0,
@@ -437,6 +498,7 @@ class SetStatsData {
       localScore: localScore,
       visitScore: visitScore,
       isCompleted: isCompleted,
+      durationSeconds: durationSeconds,
       localAttacks: localAttacks,
       visitAttacks: visitAttacks,
       localBlocks: localBlocks,
@@ -454,6 +516,7 @@ class SetStatsData {
         'localScore': localScore,
         'visitScore': visitScore,
         'isCompleted': isCompleted,
+        'durationSeconds': durationSeconds,
         'localAttacks': localAttacks,
         'visitAttacks': visitAttacks,
         'localBlocks': localBlocks,
@@ -472,6 +535,7 @@ class SetStatsData {
       localScore: _int(map['localScore']),
       visitScore: _int(map['visitScore']),
       isCompleted: _bool(map['isCompleted']),
+      durationSeconds: _int(map['durationSeconds']),
       localAttacks: _int(map['localAttacks']),
       visitAttacks: _int(map['visitAttacks']),
       localBlocks: _int(map['localBlocks']),
@@ -494,7 +558,9 @@ class MatchSnapshot {
   final int localPoints;
   final int visitPoints;
   final bool isLocalServing;
+  final bool isMatchStarted;
   final bool isMatchFinished;
+  final DateTime? setStartedAt;
   final String recentEvent;
   final List<SetStatsData> setsHistory;
   final List<MatchEvent> events;
@@ -508,7 +574,9 @@ class MatchSnapshot {
     required this.localPoints,
     required this.visitPoints,
     required this.isLocalServing,
+    required this.isMatchStarted,
     required this.isMatchFinished,
+    required this.setStartedAt,
     required this.recentEvent,
     required this.setsHistory,
     required this.events,
@@ -535,7 +603,9 @@ class MatchModel {
   int localPoints;
   int visitPoints;
   bool isLocalServing;
+  bool isMatchStarted;
   bool isMatchFinished;
+  DateTime? setStartedAt;
   String recentEvent;
 
   List<SetStatsData> setsHistory;
@@ -559,7 +629,9 @@ class MatchModel {
     required this.localPoints,
     required this.visitPoints,
     required this.isLocalServing,
+    this.isMatchStarted = false,
     this.isMatchFinished = false,
+    this.setStartedAt,
     this.recentEvent = '',
     required this.setsHistory,
     required this.events,
@@ -571,6 +643,39 @@ class MatchModel {
   String get localTeamShort => localTeam.shortName;
   String get visitTeamName => visitTeam.name;
   String get visitTeamShort => visitTeam.shortName;
+
+  bool get isUpcoming => !isMatchStarted && !isMatchFinished;
+  bool get isLive => isMatchStarted && !isMatchFinished;
+
+  MatchStatus get status => isMatchFinished
+      ? MatchStatus.finished
+      : (isMatchStarted ? MatchStatus.live : MatchStatus.upcoming);
+
+  bool get isTimerRunning => isLive && setStartedAt != null;
+
+  /// Segundos transcurridos de un set específico (1..5).
+  int setElapsedSeconds(int setNumber, [DateTime? now]) {
+    if (setNumber < 1 || setNumber > setsHistory.length) return 0;
+    final s = setsHistory[setNumber - 1];
+    if (s.isCompleted || !isLive || setNumber != currentSet || setStartedAt == null) {
+      return s.durationSeconds;
+    }
+    final delta = (now ?? DateTime.now()).difference(setStartedAt!).inSeconds;
+    return s.durationSeconds + (delta > 0 ? delta : 0);
+  }
+
+  /// Segundos transcurridos del set en juego (o del último set si ya terminó).
+  int get currentSetElapsedSeconds => setElapsedSeconds(currentSet);
+
+  /// Duración acumulada de todos los sets jugados o en juego.
+  int get totalMatchElapsedSeconds {
+    final now = DateTime.now();
+    var total = 0;
+    for (var i = 1; i <= setsHistory.length; i++) {
+      total += setElapsedSeconds(i, now);
+    }
+    return total;
+  }
 
   bool get canUndo => _undoStack.isNotEmpty;
 
@@ -621,7 +726,10 @@ class MatchModel {
         'localPoints': localPoints,
         'visitPoints': visitPoints,
         'isLocalServing': isLocalServing,
+        'status': status.name,
+        'isStarted': isMatchStarted,
         'isFinished': isMatchFinished,
+        'setStartedAt': setStartedAt,
         'recentEvent': recentEvent,
         'sets': setsHistory.map((s) => s.toMap()).toList(),
         'events':
@@ -640,14 +748,33 @@ class MatchModel {
           ),
       ];
 
+  static (String?, String?) _parseTeamsFromDocId(String id) {
+    final match = RegExp(
+      r'^([a-zA-Z0-9_-]+?)[_-]vs[_-]([a-zA-Z0-9_-]+)$',
+      caseSensitive: false,
+    ).firstMatch(id.trim());
+    if (match == null) return (null, null);
+    final rawHome = match.group(1)!.replaceAll(RegExp(r'[_-]+'), ' ').trim();
+    final rawAway = match.group(2)!.replaceAll(RegExp(r'[_-]+'), ' ').trim();
+    if (rawHome.isEmpty || rawAway.isEmpty) return (null, null);
+    return (rawHome.toUpperCase(), rawAway.toUpperCase());
+  }
+
   factory MatchModel.fromMap(
     String id,
     Map<String, dynamic> map, {
     required Map<String, TeamInfo> teams,
     required Map<String, TournamentInfo> tournaments,
   }) {
-    final homeId = _nonEmptyStr(map['homeTeamId'], null, 'tigres-uanl');
-    final awayId = _nonEmptyStr(map['awayTeamId'], null, 'borregos-mty');
+    final (idHome, idAway) = _parseTeamsFromDocId(id);
+    final rawHomeId = _nonEmptyStr(map['homeTeamId'], map['localTeamId'], '');
+    final rawAwayId = _nonEmptyStr(map['awayTeamId'], map['visitTeamId'], '');
+    final homeId = rawHomeId.isNotEmpty
+        ? rawHomeId
+        : (idHome != null ? idHome.toLowerCase() : 'tigres-uanl');
+    final awayId = rawAwayId.isNotEmpty
+        ? rawAwayId
+        : (idAway != null ? idAway.toLowerCase() : 'borregos-mty');
     final tournamentId = _nonEmptyStr(
       map['tournamentId'],
       null,
@@ -655,30 +782,42 @@ class MatchModel {
     );
 
     final baseHome = teams[homeId] ??
-        const TeamInfo(
-          id: 'tigres-uanl',
-          name: 'Tigres UANL',
-          shortName: 'TIG',
-          colorValue: 0xFFF2A900,
+        TeamInfo(
+          id: homeId,
+          name: rawHomeId.isNotEmpty
+              ? rawHomeId.toUpperCase()
+              : (idHome ?? 'Tigres UANL'),
+          shortName: _deriveShort(
+            rawHomeId.isNotEmpty
+                ? rawHomeId.toUpperCase()
+                : (idHome ?? 'Tigres UANL'),
+          ),
+          colorValue: homeId == 'fime' ? 0xFF007A33 : 0xFFF2A900,
           players: TeamInfo.defaultLocalPlayers,
         );
     final baseAway = teams[awayId] ??
-        const TeamInfo(
-          id: 'borregos-mty',
-          name: 'Borregos MTY',
-          shortName: 'BOR',
-          colorValue: 0xFF1E6FD9,
+        TeamInfo(
+          id: awayId,
+          name: rawAwayId.isNotEmpty
+              ? rawAwayId.toUpperCase()
+              : (idAway ?? 'Borregos MTY'),
+          shortName: _deriveShort(
+            rawAwayId.isNotEmpty
+                ? rawAwayId.toUpperCase()
+                : (idAway ?? 'Borregos MTY'),
+          ),
+          colorValue: awayId == 'facpya' ? 0xFF9E1B32 : 0xFF1E6FD9,
           players: TeamInfo.defaultVisitPlayers,
         );
 
     final homeName = _nonEmptyStr(
       map['localName'],
-      map['localTeamName'],
+      map['localTeamName'] ?? map['home'] ?? map['local'],
       baseHome.name,
     );
     final awayName = _nonEmptyStr(
       map['visitName'],
-      map['visitTeamName'],
+      map['visitTeamName'] ?? map['away'] ?? map['visit'],
       baseAway.name,
     );
 
@@ -730,9 +869,32 @@ class MatchModel {
         ? _int(map['visitSets'], _int(map['visitSetsWon']))
         : _int(map['visitSetsWon']);
 
-    final isMatchFinished = map.containsKey('isFinished')
+    final rawEvents = _maps(map['events']);
+    final hasScoreActivity = localSetsWon > 0 ||
+        visitSetsWon > 0 ||
+        localPoints > 0 ||
+        visitPoints > 0 ||
+        rawEvents.isNotEmpty;
+
+    final rawFinished = map.containsKey('isFinished')
         ? (_bool(map['isFinished']) || _bool(map['isMatchFinished']))
         : _bool(map['isMatchFinished']);
+
+    final rawStarted = map.containsKey('isStarted')
+        ? _bool(map['isStarted'])
+        : (map.containsKey('isMatchStarted')
+            ? _bool(map['isMatchStarted'])
+            : hasScoreActivity);
+
+    final parsedStatus = MatchStatusExtension.parse(
+      map['status'],
+      isStarted: rawStarted || hasScoreActivity,
+      isFinished: rawFinished,
+    );
+
+    final isMatchFinished = parsedStatus == MatchStatus.finished;
+    final isMatchStarted =
+        parsedStatus == MatchStatus.live || parsedStatus == MatchStatus.finished;
 
     final rawSets = _maps(map['sets']);
     final sets = <SetStatsData>[
@@ -760,6 +922,14 @@ class MatchModel {
     final start = map['startTime'];
     final now = DateTime.now();
 
+    final rawSetStartedAt = map['setStartedAt'];
+    DateTime? setStartedAt;
+    if (rawSetStartedAt is DateTime) {
+      setStartedAt = rawSetStartedAt;
+    } else if (rawSetStartedAt is String) {
+      setStartedAt = DateTime.tryParse(rawSetStartedAt);
+    }
+
     return MatchModel(
       id: id,
       tournament: tournament,
@@ -783,10 +953,12 @@ class MatchModel {
       localPoints: localPoints,
       visitPoints: visitPoints,
       isLocalServing: _bool(map['isLocalServing'], true),
+      isMatchStarted: isMatchStarted,
       isMatchFinished: isMatchFinished,
+      setStartedAt: isMatchFinished ? null : setStartedAt,
       recentEvent: _str(map['recentEvent']),
       setsHistory: sets,
-      events: _maps(map['events']).map(MatchEvent.fromMap).toList(),
+      events: rawEvents.map(MatchEvent.fromMap).toList(),
       localLineup: parsedLocalLineup.length == 6
           ? parsedLocalLineup
           : _defaultLineupFor(home),
@@ -811,7 +983,9 @@ class MatchModel {
     localPoints = other.localPoints;
     visitPoints = other.visitPoints;
     isLocalServing = other.isLocalServing;
+    isMatchStarted = other.isMatchStarted;
     isMatchFinished = other.isMatchFinished;
+    setStartedAt = other.setStartedAt;
     recentEvent = other.recentEvent;
     setsHistory = other.setsHistory;
     events = other.events;
@@ -832,7 +1006,9 @@ class MatchModel {
         localPoints: localPoints,
         visitPoints: visitPoints,
         isLocalServing: isLocalServing,
+        isMatchStarted: isMatchStarted,
         isMatchFinished: isMatchFinished,
+        setStartedAt: setStartedAt,
         recentEvent: recentEvent,
         setsHistory: setsHistory.map((s) => s.clone()).toList(),
         events: List<MatchEvent>.from(events),
@@ -842,8 +1018,41 @@ class MatchModel {
     );
   }
 
+  /// Inicia el partido desde el estado "Por empezar" y arranca el reloj del 1.º set.
+  void startMatch([DateTime? now]) {
+    if (isMatchStarted || isMatchFinished) return;
+    _saveSnapshot();
+    final t = now ?? DateTime.now();
+    isMatchStarted = true;
+    setStartedAt = t;
+    if (recentEvent.isEmpty) {
+      recentEvent = 'Comienza el $currentSet.º set';
+    }
+  }
+
+  /// Pausa o reanuda el reloj del set en curso.
+  void toggleTimer([DateTime? now]) {
+    if (!isLive) return;
+    final t = now ?? DateTime.now();
+    final activeSet = setsHistory[currentSet - 1];
+    if (setStartedAt != null) {
+      activeSet.durationSeconds = setElapsedSeconds(currentSet, t);
+      setStartedAt = null;
+    } else {
+      setStartedAt = t;
+    }
+  }
+
   bool undoLastPoint() {
     if (_undoStack.isEmpty) return false;
+    final prevSet = currentSet;
+    final prevWasFinished = isMatchFinished;
+    final liveDurationBeforeUndo =
+        (!isMatchFinished && currentSet >= 1 && currentSet <= setsHistory.length)
+            ? setsHistory[currentSet - 1].durationSeconds
+            : 0;
+    final liveStartedAtBeforeUndo = setStartedAt;
+
     final snap = _undoStack.removeLast();
     currentSet = snap.currentSet;
     localSetsWon = snap.localSetsWon;
@@ -851,12 +1060,26 @@ class MatchModel {
     localPoints = snap.localPoints;
     visitPoints = snap.visitPoints;
     isLocalServing = snap.isLocalServing;
+    isMatchStarted = snap.isMatchStarted;
     isMatchFinished = snap.isMatchFinished;
     recentEvent = snap.recentEvent;
     setsHistory = snap.setsHistory;
     events = snap.events;
     localLineup = snap.localLineup;
     visitLineup = snap.visitLineup;
+
+    if (!isMatchStarted || isMatchFinished) {
+      setStartedAt = null;
+    } else if (snap.currentSet != prevSet || prevWasFinished) {
+      // Si se deshizo el punto que cerró el set o el partido, reanudamos el
+      // reloj del set previo a partir del tiempo que llevaba acumulado.
+      setStartedAt = DateTime.now();
+    } else {
+      // Si se deshizo un punto dentro del mismo set, el reloj del set sigue
+      // corriendo sin retroceder.
+      setsHistory[currentSet - 1].durationSeconds = liveDurationBeforeUndo;
+      setStartedAt = liveStartedAtBeforeUndo ?? snap.setStartedAt;
+    }
     return true;
   }
 
@@ -890,6 +1113,12 @@ class MatchModel {
     if (isMatchFinished) return;
 
     _saveSnapshot();
+
+    final now = DateTime.now();
+    if (!isMatchStarted) {
+      isMatchStarted = true;
+    }
+    setStartedAt ??= now;
 
     // Si el equipo que anota no tenía el saque (Side-out), recupera saque y rota
     if (isLocal != isLocalServing) {
@@ -970,8 +1199,10 @@ class MatchModel {
     final int snapshotLocalPts = localPoints;
     final int snapshotVisitPts = visitPoints;
     final String scoringTeam = isLocal ? localTeamName : visitTeamName;
+    final int elapsedThisSet = setElapsedSeconds(currentSet, now);
+    final String setTimeLabel = formatDurationSeconds(elapsedThisSet);
     final String desc = setWon
-        ? 'Gana el set $scoringTeam (${actionType.eventDescription})'
+        ? 'Gana el set $scoringTeam en $setTimeLabel (${actionType.eventDescription})'
         : actionType.eventDescription;
 
     recentEvent = '$snapshotLocalPts-$snapshotVisitPts · $desc ($scoringTeam)';
@@ -979,7 +1210,7 @@ class MatchModel {
     events.insert(
       0,
       MatchEvent(
-        id: '${DateTime.now().microsecondsSinceEpoch}',
+        id: '${now.microsecondsSinceEpoch}',
         setNumber: scoredSetNumber,
         localPoints: snapshotLocalPts,
         visitPoints: snapshotVisitPts,
@@ -995,6 +1226,8 @@ class MatchModel {
     );
 
     if (setWon) {
+      // El reloj del set se detiene cuando un equipo gana el set y guarda lo que duró.
+      setStats.durationSeconds = elapsedThisSet;
       setStats.isCompleted = true;
       if (isLocal) {
         localSetsWon++;
@@ -1004,10 +1237,13 @@ class MatchModel {
 
       if (localSetsWon == 3 || visitSetsWon == 3 || currentSet == 5) {
         isMatchFinished = true;
+        setStartedAt = null;
       } else {
         currentSet++;
         localPoints = 0;
         visitPoints = 0;
+        setsHistory[currentSet - 1].durationSeconds = 0;
+        setStartedAt = now;
       }
     }
   }
@@ -1020,6 +1256,7 @@ class MatchModel {
 
     int totalLocalScore = 0;
     int totalVisitScore = 0;
+    int totalDuration = 0;
     int totalLocalAttacks = 0;
     int totalVisitAttacks = 0;
     int totalLocalBlocks = 0;
@@ -1029,10 +1266,12 @@ class MatchModel {
     int totalLocalErrors = 0;
     int totalVisitErrors = 0;
     final List<RallyPointNode> allTimeline = [];
+    final now = DateTime.now();
 
     for (final s in setsHistory) {
       totalLocalScore += s.localScore;
       totalVisitScore += s.visitScore;
+      totalDuration += setElapsedSeconds(s.setNumber, now);
       totalLocalAttacks += s.localAttacks;
       totalVisitAttacks += s.visitAttacks;
       totalLocalBlocks += s.localBlocks;
@@ -1049,6 +1288,7 @@ class MatchModel {
       localScore: totalLocalScore,
       visitScore: totalVisitScore,
       isCompleted: isMatchFinished,
+      durationSeconds: totalDuration,
       localAttacks: totalLocalAttacks,
       visitAttacks: totalVisitAttacks,
       localBlocks: totalLocalBlocks,

@@ -271,60 +271,67 @@ class _TrainingScreenState extends State<TrainingScreen> {
               color: sp.raised,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Column(
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Descanso entre series',
-                      style: context.type.labelMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTime(_remainingSeconds),
-                      style: TextStyle(
-                        color: _isRunning ? sp.brand : sp.ink,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
-                        fontFeatures: kTabular,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Descanso entre series',
+                            style: context.type.labelMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatTime(_remainingSeconds),
+                            style: TextStyle(
+                              color: _isRunning ? sp.brand : sp.ink,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
+                              fontFeatures: kTabular,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
+                    const SizedBox(width: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
                         for (final sec in const [30, 60, 90])
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: Pressable(
-                              onTap: () => _setTimerPreset(sec),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
+                          Pressable(
+                            onTap: () => _setTimerPreset(sec),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _selectedPresetSeconds == sec
+                                    ? sp.brand
+                                    : sp.card,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
                                   color: _selectedPresetSeconds == sec
                                       ? sp.brand
-                                      : sp.card,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: _selectedPresetSeconds == sec
-                                        ? sp.brand
-                                        : sp.line,
-                                  ),
+                                      : sp.line,
                                 ),
-                                child: Text(
-                                  '${sec}s',
-                                  style: TextStyle(
-                                    color: _selectedPresetSeconds == sec
-                                        ? sp.onBrand
-                                        : sp.muted,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    fontFeatures: kTabular,
-                                  ),
+                              ),
+                              child: Text(
+                                '${sec}s',
+                                style: TextStyle(
+                                  color: _selectedPresetSeconds == sec
+                                      ? sp.onBrand
+                                      : sp.muted,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  fontFeatures: kTabular,
                                 ),
                               ),
                             ),
@@ -333,7 +340,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     ),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     IconButton.outlined(
@@ -342,15 +349,17 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       icon: const Icon(Icons.replay_rounded, size: 20),
                     ),
                     const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _startPauseTimer,
-                      icon: Icon(
-                        _isRunning
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 20,
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _startPauseTimer,
+                        icon: Icon(
+                          _isRunning
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 20,
+                        ),
+                        label: Text(_isRunning ? 'Pausar' : 'Iniciar'),
                       ),
-                      label: Text(_isRunning ? 'Pausar' : 'Iniciar'),
                     ),
                   ],
                 ),

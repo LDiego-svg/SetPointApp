@@ -43,13 +43,13 @@ class InMemoryMatchRepository implements MatchRepository {
   @override
   Future<void> seedSampleData() async {
     final tournament = SeedData.tournament();
-    final home = SeedData.homeTeam();
-    final away = SeedData.awayTeam();
-    final match = SeedData.match(tournament, home, away);
     tournaments[tournament.id] = tournament.toMap();
-    teams[home.id] = home.toMap();
-    teams[away.id] = away.toMap();
-    matches[match.id] = match.toMap();
+    for (final team in SeedData.allTeams()) {
+      teams[team.id] = team.toMap();
+    }
+    for (final match in SeedData.allMatches(tournament)) {
+      matches[match.id] = match.toMap();
+    }
     _changes.add(null);
   }
 }

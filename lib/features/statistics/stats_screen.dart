@@ -57,9 +57,8 @@ class _StatsScreenState extends State<StatsScreen>
                   child: PillTabs(
                     labels: _setChips,
                     selected: _selectedFilterIndex,
-                    highlighted: _match.isMatchFinished
-                        ? const {}
-                        : {_match.currentSet},
+                    highlighted:
+                        _match.isLive ? {_match.currentSet} : const {},
                     onChanged: (i) => setState(() => _selectedFilterIndex = i),
                   ),
                 ),
@@ -136,6 +135,9 @@ class _StatsScreenState extends State<StatsScreen>
 
   // 2. COMPARATIVA ESTILO SOFASCORE
   Widget _buildComparativeStatsCard(SetStatsData stats) {
+    final durationSecs = _selectedFilterIndex == 0
+        ? _match.totalMatchElapsedSeconds
+        : _match.setElapsedSeconds(_selectedFilterIndex);
     final rows = <(String, int, int)>[
       ('Puntos totales', stats.localTotalPoints, stats.visitTotalPoints),
       ('Puntos de ataque', stats.localAttacks, stats.visitAttacks),
@@ -146,6 +148,10 @@ class _StatsScreenState extends State<StatsScreen>
     ];
     return SectionCard(
       title: 'Estadísticas',
+      trailing: Text(
+        formatDurationSeconds(durationSecs),
+        style: context.type.labelMedium?.copyWith(fontFeatures: kTabular),
+      ),
       child: Column(
         children: [
           for (var i = 0; i < rows.length; i++) ...[

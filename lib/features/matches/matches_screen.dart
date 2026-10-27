@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -14,11 +16,26 @@ class MatchesScreen extends StatefulWidget {
 }
 
 class _MatchesScreenState extends State<MatchesScreen> {
-  // 0 = todos, 1 = en vivo, 2 = finalizados
+  // 0 = todos, 1 = por empezar, 2 = en vivo, 3 = finalizados
   int _filter = 0;
   bool _seeding = false;
   Stream<List<MatchModel>>? _stream;
   MatchRepository? _repo;
+  Timer? _clockTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTicker?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -139,11 +156,13 @@ class _MatchesScreenState extends State<MatchesScreen> {
             );
           }
 
-          final live = all.where((m) => !m.isMatchFinished).length;
-          final done = all.length - live;
+          final upcoming = all.where((m) => m.isUpcoming).length;
+          final live = all.where((m) => m.isLive).length;
+          final done = all.where((m) => m.isMatchFinished).length;
           final visible = switch (_filter) {
-            1 => all.where((m) => !m.isMatchFinished).toList(),
-            2 => all.where((m) => m.isMatchFinished).toList(),
+            1 => all.where((m) => m.isUpcoming).toList(),
+            2 => all.where((m) => m.isLive).toList(),
+            3 => all.where((m) => m.isMatchFinished).toList(),
             _ => all,
           };
 
@@ -164,11 +183,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     child: PillTabs(
                       labels: [
                         'Todos ${all.length}',
+                        'Por empezar $upcoming',
                         'En vivo $live',
                         'Finalizados $done',
                       ],
                       selected: _filter,
-                      highlighted: live > 0 ? {1} : const {},
+                      highlighted: live > 0 ? {2} : const {},
                       onChanged: (i) => setState(() => _filter = i),
                     ),
                   ),
@@ -177,9 +197,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       child: Text(
-                        _filter == 1
-                            ? 'No hay partidos en vivo ahora mismo.'
-                            : 'Todavía no hay partidos finalizados.',
+                        switch (_filter) {
+                          1 => 'No hay partidos por empezar.',
+                          2 => 'No hay partidos en vivo ahora mismo.',
+                          _ => 'Todavía no hay partidos finalizados.',
+                        },
                         textAlign: TextAlign.center,
                         style: context.type.bodyMedium
                             ?.copyWith(color: sp.muted),
@@ -205,10 +227,24 @@ class _TournamentBlock extends StatelessWidget {
 
   const _TournamentBlock({required this.matches, required this.onOpen});
 
+  static List<SetStatsData> _playedSetsFor(MatchModel m) {
+    return m.setsHistory
+        .where(
+          (s) => s.isCompleted || (!m.isMatchFinished && s.setNumber == m.currentSet),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final sp = context.sp;
     final t = matches.first.tournament;
+    var maxSetColumns = 1;
+    for (final m in matches) {
+      final count = _playedSetsFor(m).length;
+      if (count > maxSetColumns) maxSetColumns = count;
+    }
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -252,7 +288,11 @@ class _TournamentBlock extends StatelessWidget {
           ),
           for (final m in matches) ...[
             const Divider(),
-            _MatchRow(match: m, onTap: () => onOpen(m)),
+            _MatchRow(
+              match: m,
+              setColumns: maxSetColumns,
+              onTap: () => onOpen(m),
+            ),
           ],
         ],
       ),
@@ -271,24 +311,32 @@ String _formatTimeAmPm(DateTime t) {
 /// [hora / estado] | [equipos] [sets] [parciales]
 class _MatchRow extends StatelessWidget {
   final MatchModel match;
+  final int setColumns;
   final VoidCallback onTap;
 
-  const _MatchRow({required this.match, required this.onTap});
+  const _MatchRow({
+    required this.match,
+    required this.setColumns,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final sp = context.sp;
     final m = match;
-    final live = !m.isMatchFinished;
-    final hasPoints = m.localSetsWon > 0 ||
-        m.visitSetsWon > 0 ||
-        m.localPoints > 0 ||
-        m.visitPoints > 0 ||
-        m.events.isNotEmpty;
-    final playedSets = m.setsHistory
-        .where((s) =>
-            s.isCompleted || (live && s.setNumber == m.currentSet))
-        .toList();
+    final playedSets = _TournamentBlock._playedSetsFor(m);
+
+    final statusText = switch (m.status) {
+      MatchStatus.upcoming => 'Por empezar',
+      MatchStatus.live =>
+        '${m.currentSet}.º · ${formatDurationSeconds(m.currentSetElapsedSeconds)}',
+      MatchStatus.finished => 'Final',
+    };
+    final statusColor = switch (m.status) {
+      MatchStatus.upcoming => sp.brand,
+      MatchStatus.live => sp.live,
+      MatchStatus.finished => sp.muted,
+    };
 
     return Material(
       color: Colors.transparent,
@@ -302,7 +350,7 @@ class _MatchRow extends StatelessWidget {
               Row(
                 children: [
                   SizedBox(
-                    width: 68,
+                    width: 78,
                     child: Column(
                       children: [
                         Text(
@@ -323,13 +371,13 @@ class _MatchRow extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          !live
-                              ? 'Final'
-                              : (hasPoints ? '${m.currentSet}.º set' : '1.º set'),
+                          statusText,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: live ? sp.live : sp.muted,
-                            fontSize: 11.5,
+                            color: statusColor,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
+                            fontFeatures: kTabular,
                           ),
                         ),
                       ],
@@ -363,7 +411,7 @@ class _MatchRow extends StatelessWidget {
               if (m.recentEvent.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.only(left: 69),
+                  padding: const EdgeInsets.only(left: 79),
                   child: Text(
                     m.recentEvent,
                     maxLines: 1,
@@ -389,7 +437,8 @@ class _MatchRow extends StatelessWidget {
     final team = isLocal ? m.localTeam : m.visitTeam;
     final sets = isLocal ? m.localSetsWon : m.visitSetsWon;
     final oppSets = isLocal ? m.visitSetsWon : m.localSetsWon;
-    final live = !m.isMatchFinished;
+    final live = m.isLive;
+    final upcoming = m.isUpcoming;
     final lostMatch = m.isMatchFinished && sets < oppSets;
     final serving = live && (m.isLocalServing == isLocal);
 
@@ -401,29 +450,38 @@ class _MatchRow extends StatelessWidget {
           size: 20,
         ),
         const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            team.name,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: lostMatch ? sp.muted : sp.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  team.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: lostMatch ? sp.muted : sp.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (serving) ...[
+                const SizedBox(width: 6),
+                Icon(Icons.sports_volleyball, size: 12, color: sp.brand),
+              ],
+            ],
           ),
         ),
-        if (serving) ...[
-          const SizedBox(width: 6),
-          Icon(Icons.sports_volleyball, size: 12, color: sp.brand),
-        ],
-        const Spacer(),
+        const SizedBox(width: 8),
         SizedBox(
           width: 22,
           child: Text(
             '$sets',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: live ? sp.live : (lostMatch ? sp.muted : sp.ink),
+              color: upcoming
+                  ? sp.muted
+                  : (live ? sp.live : (lostMatch ? sp.muted : sp.ink)),
               fontSize: 15,
               fontWeight: FontWeight.w800,
               fontFeatures: kTabular,
@@ -431,25 +489,31 @@ class _MatchRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        for (final s in playedSets)
+        for (var i = 0; i < setColumns; i++)
           SizedBox(
             width: 24,
-            child: Text(
-              '${isLocal ? s.localScore : s.visitScore}',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: !s.isCompleted
-                    ? sp.live
-                    : ((isLocal
-                            ? s.localScore > s.visitScore
-                            : s.visitScore > s.localScore)
-                        ? sp.ink
-                        : sp.faint),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                fontFeatures: kTabular,
-              ),
-            ),
+            child: i < playedSets.length
+                ? Text(
+                    '${isLocal ? playedSets[i].localScore : playedSets[i].visitScore}',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: upcoming
+                          ? sp.faint
+                          : (!playedSets[i].isCompleted
+                              ? sp.live
+                              : ((isLocal
+                                      ? playedSets[i].localScore >
+                                          playedSets[i].visitScore
+                                      : playedSets[i].visitScore >
+                                          playedSets[i].localScore)
+                                  ? sp.ink
+                                  : sp.faint)),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: kTabular,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
       ],
     );

@@ -88,17 +88,17 @@ class FirestoreMatchRepository implements MatchRepository {
   Future<void> seedSampleData() async {
     final batch = _db.batch();
     final tournament = SeedData.tournament();
-    final home = SeedData.homeTeam();
-    final away = SeedData.awayTeam();
-    final match = SeedData.match(tournament, home, away);
 
     batch.set(_tournaments.doc(tournament.id), tournament.toMap());
-    batch.set(_teams.doc(home.id), home.toMap());
-    batch.set(_teams.doc(away.id), away.toMap());
-    batch.set(_matches.doc(match.id), {
-      ...match.toMap(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    for (final team in SeedData.allTeams()) {
+      batch.set(_teams.doc(team.id), team.toMap());
+    }
+    for (final match in SeedData.allMatches(tournament)) {
+      batch.set(_matches.doc(match.id), {
+        ...match.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
     await batch.commit();
   }
 }
