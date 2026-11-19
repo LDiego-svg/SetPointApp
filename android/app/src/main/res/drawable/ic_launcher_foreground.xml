@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Balón de voleibol (glifo sports_volleyball de Material Icons). Generado. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37.8 32.34C31.19 37.29 27 45.04 27 53.94C27 57.88 27.76 61.69 29.41 65.12L37.8 60.16V32.34ZM51.4 52.41V27C48.47 27.25 45.8 28.02 43.26 29.16V57.11L51.4 52.41ZM54.06 57.11 32.08 69.69C33.73 71.98 35.77 74.01 37.93 75.66L62.2 61.81L54.06 57.11ZM56.73 43.01V52.41L78.71 64.99C79.86 62.58 80.62 59.78 81 56.99L56.73 43.01ZM43.39 78.84C46.69 80.24 50.25 81 54.06 81C63.08 81 71.09 76.55 76.04 69.82L67.66 64.86L43.39 78.84ZM81 50.76C79.48 38.18 69.44 28.27 56.73 27V36.78L81 50.76Z" />
+</vector>

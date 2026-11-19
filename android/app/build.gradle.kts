@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -11,6 +13,11 @@ android {
     namespace = "com.example.set_point"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    // Necesario para resValue (color de marca del ícono y la pantalla de carga).
+    buildFeatures {
+        resValues = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -30,6 +37,10 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Color del ícono y de la pantalla de carga: el mismo SP_BRAND que
+        // usa la app (--dart-define=SP_BRAND=RRGGBB). Sin él, azul.
+        resValue("color", "brand_color", "#FF${brandColorHex()}")
     }
 
     buildTypes {
@@ -49,4 +60,24 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+/**
+ * Lee SP_BRAND de los --dart-define (Flutter los pasa a Gradle en base64,
+ * separados por comas). Acepta RRGGBB, #RRGGBB o 0xFFRRGGBB.
+ */
+fun brandColorHex(): String {
+    val defines = (project.findProperty("dart-defines") as String?) ?: ""
+    val raw = defines.split(",")
+        .filter { it.isNotBlank() }
+        .map { String(Base64.getDecoder().decode(it)) }
+        .firstOrNull { it.startsWith("SP_BRAND=") }
+        ?.substringAfter("=")
+        ?.trim()
+        ?.removePrefix("#")
+        ?.removePrefix("0x")
+        ?.removePrefix("0X")
+        ?: ""
+    val rgb = if (raw.length == 8) raw.substring(2) else raw
+    return if (Regex("^[0-9a-fA-F]{6}$").matches(rgb)) rgb.uppercase() else "3449E8"
 }

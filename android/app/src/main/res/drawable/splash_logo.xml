@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Balón de la pantalla de carga (Android 11 o anterior). Generado. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="112dp"
+    android:height="112dp"
+    android:viewportWidth="112"
+    android:viewportHeight="112">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M22.4 11.07C8.7 21.35 -0 37.42 -0 55.87C-0 64.04 1.58 71.94 5.01 79.06L22.4 68.78V11.07ZM50.6 52.71V0C44.54 0.53 39 2.11 33.73 4.48V62.46L50.6 52.71ZM56.13 62.46 10.54 88.55C13.97 93.29 18.18 97.51 22.66 100.93L73 72.21L56.13 62.46ZM61.67 33.2V52.71L107.26 78.8C109.63 73.79 111.21 67.99 112 62.19L61.67 33.2ZM34 107.52C40.85 110.42 48.23 112 56.13 112C74.84 112 91.44 102.78 101.72 88.81L84.33 78.53L34 107.52ZM112 49.28C108.84 23.19 88.02 2.64 61.67 0V20.29L112 49.28Z" />
+</vector>
