@@ -47,6 +47,31 @@ class _MatchesScreenState extends State<MatchesScreen> {
     }
   }
 
+  /// Pide confirmación antes de reescribir los datos de ejemplo existentes.
+  Future<void> _confirmAndSeed() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Restaurar datos de ejemplo?'),
+        content: const Text(
+          'Se reescribirán todos los partidos, equipos y torneos de ejemplo, '
+          'y su marcador volverá a 0-0. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Restaurar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _seed();
+  }
+
   Future<void> _seed() async {
     setState(() => _seeding = true);
     try {
@@ -54,9 +79,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Partido reiniciado en Firestore (0-0 · Día 24, 8:30 AM)',
-            ),
+            content: Text('Datos de ejemplo restaurados'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -99,7 +122,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
         actions: [
           IconButton(
             tooltip: 'Restaurar partido de ejemplo en Firestore',
-            onPressed: _seeding ? null : _seed,
+            onPressed: _seeding ? null : _confirmAndSeed,
             icon: _seeding
                 ? SizedBox(
                     width: 18,

@@ -58,9 +58,12 @@ key.properties
 # VS Code
 .vscode/
 
-# AI Agent / Dev tools (Antigravity & Gemini skills)
+# AI Dev tools
 .agents/
 skills-lock.json
+.claude/
+CLAUDE.md
+MEJORAS.md
 
 # Firebase Admin / Service Accounts / Credentials
 *firebase-adminsdk*.json

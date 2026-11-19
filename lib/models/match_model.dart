@@ -589,6 +589,9 @@ class MatchModel {
   /// Cuántos eventos se guardan en Firestore (el feed solo muestra los últimos).
   static const int maxStoredEvents = 80;
 
+  /// Máximo de pasos que se pueden deshacer; los más antiguos se descartan.
+  static const int maxUndoSteps = 50;
+
   final String id;
   TournamentInfo tournament;
   String stage;
@@ -612,6 +615,15 @@ class MatchModel {
   List<MatchEvent> events;
   List<PlayerPosition> localLineup;
   List<PlayerPosition> visitLineup;
+
+  /// Versión del estado: cada guardado desde la app la incrementa. Sirve para
+  /// descartar datos remotos más viejos que el estado local y detectar
+  /// escrituras simultáneas desde otro dispositivo.
+  int rev;
+
+  /// Sesión de la app que hizo el último guardado (vacío si vino del seed o
+  /// de la consola de Firebase).
+  String updatedBy;
 
   final List<MatchSnapshot> _undoStack = [];
 
@@ -637,6 +649,8 @@ class MatchModel {
     required this.events,
     required this.localLineup,
     required this.visitLineup,
+    this.rev = 0,
+    this.updatedBy = '',
   });
 
   String get localTeamName => localTeam.name;
@@ -678,6 +692,16 @@ class MatchModel {
   }
 
   bool get canUndo => _undoStack.isNotEmpty;
+
+  /// Copia de la pila de deshacer, para conservarla al cerrar la pantalla.
+  List<MatchSnapshot> get undoHistory => List.of(_undoStack);
+
+  /// Sustituye la pila de deshacer por una conservada con [undoHistory].
+  void restoreUndoHistory(List<MatchSnapshot> history) {
+    _undoStack
+      ..clear()
+      ..addAll(history);
+  }
 
   int get targetPointsForCurrentSet => currentSet == 5 ? 15 : 25;
 
@@ -736,6 +760,8 @@ class MatchModel {
             events.take(maxStoredEvents).map((e) => e.toMap()).toList(),
         'localLineup': localLineup.map((p) => p.toMap()).toList(),
         'visitLineup': visitLineup.map((p) => p.toMap()).toList(),
+        'rev': rev,
+        'updatedBy': updatedBy,
       };
 
   static List<PlayerPosition> _defaultLineupFor(TeamInfo team) => [
@@ -965,6 +991,8 @@ class MatchModel {
       visitLineup: parsedVisitLineup.length == 6
           ? parsedVisitLineup
           : _defaultLineupFor(away),
+      rev: _int(map['rev']),
+      updatedBy: _str(map['updatedBy']),
     );
   }
 
@@ -991,6 +1019,28 @@ class MatchModel {
     events = other.events;
     localLineup = other.localLineup;
     visitLineup = other.visitLineup;
+    rev = other.rev;
+    updatedBy = other.updatedBy;
+  }
+
+  /// Vuelve el partido a 0-0 "Por empezar" sin tocar equipos, torneo, sede
+  /// ni horario. Vacía también la pila de deshacer.
+  void resetGame() {
+    currentSet = 1;
+    localSetsWon = 0;
+    visitSetsWon = 0;
+    localPoints = 0;
+    visitPoints = 0;
+    isLocalServing = true;
+    isMatchStarted = false;
+    isMatchFinished = false;
+    setStartedAt = null;
+    recentEvent = '';
+    setsHistory = [for (var i = 1; i <= 5; i++) SetStatsData(setNumber: i)];
+    events = [];
+    localLineup = _defaultLineupFor(localTeam);
+    visitLineup = _defaultLineupFor(visitTeam);
+    _undoStack.clear();
   }
 
   // -------------------------------------------------------------------------
@@ -998,6 +1048,9 @@ class MatchModel {
   // -------------------------------------------------------------------------
 
   void _saveSnapshot() {
+    if (_undoStack.length >= maxUndoSteps) {
+      _undoStack.removeAt(0);
+    }
     _undoStack.add(
       MatchSnapshot(
         currentSet: currentSet,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -11,7 +12,26 @@ import '../../models/match_model.dart';
 /// se guarda en Firestore. Los cambios hechos desde otro dispositivo o desde
 /// la consola de Firebase llegan por el stream y se aplican sin perder la
 /// pila de "deshacer".
+///
+/// Control de concurrencia ligero (sin transacciones, funciona sin conexión):
+/// cada guardado incrementa `rev` y firma con [sessionId]. Mientras hay
+/// guardados en curso se ignoran los datos remotos con `rev` menor (son
+/// anteriores al estado local). Si llega un `rev` igual al último que
+/// guardamos pero firmado por otra sesión, otro dispositivo escribió a la vez:
+/// se adopta su versión y se avisa.
+///
+/// La pila de "deshacer" se conserva en memoria al salir de la pantalla y se
+/// recupera al volver, salvo que el partido haya cambiado desde otra sesión.
+/// No sobrevive a cerrar la app.
 class MatchController extends ChangeNotifier {
+  /// Identifica esta ejecución de la app en el campo `updatedBy`.
+  static final String sessionId =
+      '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+
+  /// Pilas de deshacer de los partidos cerrados, con la `rev` que tenían.
+  static final Map<String, ({int rev, List<MatchSnapshot> history})>
+      _savedUndo = {};
+
   final MatchRepository repository;
   final String matchId;
 
@@ -25,6 +45,8 @@ class MatchController extends ChangeNotifier {
 
   StreamSubscription<MatchModel?>? _sub;
   Timer? _clockTicker;
+  int _pendingSaves = 0;
+  int? _lastSavedRev;
 
   MatchController({
     required this.repository,
@@ -32,6 +54,7 @@ class MatchController extends ChangeNotifier {
     MatchModel? initial,
   }) : match = initial {
     loading = initial == null;
+    if (initial != null) _restoreUndo(initial);
     _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       final m = match;
       if (m != null && m.isTimerRunning) {
@@ -46,9 +69,22 @@ class MatchController extends ChangeNotifier {
           notFound = true;
         } else if (match == null) {
           match = remote;
+          _restoreUndo(remote);
           notFound = false;
         } else {
-          match!.applyRemote(remote);
+          final local = match!;
+          if (_pendingSaves > 0 && remote.rev < local.rev) {
+            // Dato anterior a un guardado local que aún no termina.
+            return;
+          }
+          if (remote.rev == _lastSavedRev &&
+              remote.updatedBy.isNotEmpty &&
+              remote.updatedBy != sessionId) {
+            saveError = 'Otro dispositivo modificó el partido al mismo '
+                'tiempo. Se cargó su marcador; revisa el último punto.';
+            _lastSavedRev = null;
+          }
+          local.applyRemote(remote);
           notFound = false;
         }
         notifyListeners();
@@ -61,14 +97,40 @@ class MatchController extends ChangeNotifier {
     );
   }
 
-  Future<void> _persist() async {
+  /// Recupera la pila conservada solo si nuestro último guardado sigue siendo
+  /// el estado actual; si no, deshacer pisaría cambios de otra sesión.
+  void _restoreUndo(MatchModel m) {
+    final saved = _savedUndo.remove(matchId);
+    if (saved != null && saved.rev == m.rev && m.updatedBy == sessionId) {
+      m.restoreUndoHistory(saved.history);
+    }
+  }
+
+  void _saveUndo() {
     final m = match;
-    if (m == null) return;
+    if (m != null && m.canUndo) {
+      _savedUndo[matchId] = (rev: m.rev, history: m.undoHistory);
+    }
+  }
+
+  Future<bool> _persist({
+    String errorPrefix = 'No se pudo guardar en la base de datos',
+  }) async {
+    final m = match;
+    if (m == null) return false;
+    m.rev++;
+    m.updatedBy = sessionId;
+    _lastSavedRev = m.rev;
+    _pendingSaves++;
     try {
       await repository.saveMatchState(m);
+      return true;
     } catch (e) {
-      saveError = 'No se pudo guardar en la base de datos: $e';
+      saveError = '$errorPrefix: $e';
       notifyListeners();
+      return false;
+    } finally {
+      _pendingSaves--;
     }
   }
 
@@ -172,19 +234,21 @@ class MatchController extends ChangeNotifier {
     await _persist();
   }
 
-  Future<void> resetMatch() async {
-    try {
-      await repository.seedSampleData();
-    } catch (e) {
-      saveError = 'No se pudo reiniciar el partido: $e';
-      notifyListeners();
-    }
+  /// Reinicia solo este partido a 0-0 "Por empezar". Devuelve `false` si no
+  /// se pudo guardar (el error queda en [saveError]).
+  Future<bool> resetMatch() async {
+    final m = match;
+    if (m == null) return false;
+    m.resetGame();
+    notifyListeners();
+    return _persist(errorPrefix: 'No se pudo reiniciar el partido');
   }
 
   void clearSaveError() => saveError = null;
 
   @override
   void dispose() {
+    _saveUndo();
     _clockTicker?.cancel();
     _sub?.cancel();
     super.dispose();

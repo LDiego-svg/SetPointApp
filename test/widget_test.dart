@@ -4,10 +4,15 @@ import 'package:set_point/core/theme/app_theme.dart';
 import 'package:set_point/data/in_memory_match_repository.dart';
 import 'package:set_point/main.dart';
 import 'package:set_point/models/match_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUpAll(() {
     AppTheme.useGoogleFonts = false;
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
   });
 
   testWidgets('SetPoint Sofascore flow, upcoming state, and set timer', (
@@ -135,5 +140,27 @@ void main() {
     await tester.tap(find.text('Pausar'));
     await tester.pump();
     expect(find.text('Iniciar'), findsOneWidget);
+  });
+
+  testWidgets('Training progress starts empty and persists across restarts',
+      (WidgetTester tester) async {
+    Future<void> openTraining() async {
+      await tester.pumpWidget(SetPointApp(repository: InMemoryMatchRepository()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Entrenamiento'));
+      await tester.pumpAndSettle();
+    }
+
+    await openTraining();
+    expect(find.text('0 de 8 · 0%'), findsOneWidget);
+
+    await tester.tap(find.text('Saque en suspensión de potencia'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 de 8 · 13%'), findsOneWidget);
+
+    // Simula cerrar y abrir la app: se descarta el árbol y se reconstruye.
+    await tester.pumpWidget(const SizedBox());
+    await openTraining();
+    expect(find.text('1 de 8 · 13%'), findsOneWidget);
   });
 }

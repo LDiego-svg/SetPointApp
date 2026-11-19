@@ -349,13 +349,33 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                 IconButton(
                   tooltip: 'Reiniciar partido a 0-0',
                   onPressed: () async {
-                    await c.resetMatch();
-                    if (context.mounted) {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('¿Reiniciar partido?'),
+                        content: const Text(
+                          'El marcador, los sets, las estadísticas y los '
+                          'eventos de este partido volverán a 0. Esta acción '
+                          'no se puede deshacer.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Cancelar'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Reiniciar'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true) return;
+                    final ok = await c.resetMatch();
+                    if (ok && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text(
-                            'Partido reiniciado a 0-0 (Día 24 · 8:30 AM)',
-                          ),
+                          content: Text('Partido reiniciado a 0-0'),
                           duration: Duration(seconds: 2),
                         ),
                       );

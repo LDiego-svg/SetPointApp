@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/sp_widgets.dart';
+import 'training_progress_store.dart';
 
 class TrainingDrill {
   final String id;
@@ -26,7 +27,9 @@ class TrainingDrill {
 }
 
 class TrainingScreen extends StatefulWidget {
-  const TrainingScreen({super.key});
+  final TrainingProgressStore store;
+
+  const TrainingScreen({super.key, this.store = const TrainingProgressStore()});
 
   @override
   State<TrainingScreen> createState() => _TrainingScreenState();
@@ -56,7 +59,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       setsAndReps: '4 series × 10 saques efectivos',
       intensity: 'Media-alta',
       restSuggestion: '45 s descanso',
-      isCompleted: true,
+      isCompleted: false,
     ),
     TrainingDrill(
       id: 'd2',
@@ -74,7 +77,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       setsAndReps: '3 series × 15 recepciones perfectas (#)',
       intensity: 'Media',
       restSuggestion: '45 s descanso',
-      isCompleted: true,
+      isCompleted: false,
     ),
     TrainingDrill(
       id: 'd4',
@@ -122,6 +125,30 @@ class _TrainingScreenState extends State<TrainingScreen> {
       isCompleted: false,
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    final completed = await widget.store.loadCompleted();
+    if (!mounted) return;
+    setState(() {
+      for (final d in _drills) {
+        d.isCompleted = completed.contains(d.id);
+      }
+    });
+  }
+
+  void _toggleDrill(TrainingDrill drill) {
+    setState(() => drill.isCompleted = !drill.isCompleted);
+    widget.store.saveCompleted({
+      for (final d in _drills)
+        if (d.isCompleted) d.id,
+    });
+  }
 
   @override
   void dispose() {
@@ -388,9 +415,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             if (i > 0) const Divider(),
             _DrillRow(
               drill: drills[i],
-              onToggle: () {
-                setState(() => drills[i].isCompleted = !drills[i].isCompleted);
-              },
+              onToggle: () => _toggleDrill(drills[i]),
               accentColor: sp.brand,
             ),
           ],
