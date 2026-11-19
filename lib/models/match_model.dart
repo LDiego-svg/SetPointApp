@@ -1,8 +1,4 @@
-enum MatchStatus {
-  upcoming,
-  live,
-  finished,
-}
+enum MatchStatus { upcoming, live, finished }
 
 extension MatchStatusExtension on MatchStatus {
   String get label {
@@ -54,12 +50,7 @@ String formatDurationSeconds(int totalSeconds) {
   return '$mm:$ss';
 }
 
-enum PointActionType {
-  attack,
-  block,
-  ace,
-  opponentError,
-}
+enum PointActionType { attack, block, ace, opponentError }
 
 extension PointActionTypeExtension on PointActionType {
   /// Nombre corto para botones y etiquetas.
@@ -200,10 +191,10 @@ class TournamentInfo {
       );
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'category': category,
-        'season': season,
-      };
+    'name': name,
+    'category': category,
+    'season': season,
+  };
 }
 
 class TeamPlayer {
@@ -218,16 +209,16 @@ class TeamPlayer {
   });
 
   factory TeamPlayer.fromMap(Map<String, dynamic> map) => TeamPlayer(
-        dorsal: _int(map['dorsal']),
-        name: _str(map['name'], 'Jugador'),
-        role: _str(map['role']),
-      );
+    dorsal: _int(map['dorsal']),
+    name: _str(map['name'], 'Jugador'),
+    role: _str(map['role']),
+  );
 
   Map<String, dynamic> toMap() => {
-        'dorsal': dorsal,
-        'name': name,
-        'role': role,
-      };
+    'dorsal': dorsal,
+    'name': name,
+    'role': role,
+  };
 }
 
 class TeamInfo {
@@ -267,8 +258,8 @@ class TeamInfo {
     return TeamInfo(
       id: id ?? this.id,
       name: nextName,
-      shortName: shortName ??
-          (name != null ? _deriveShort(nextName) : this.shortName),
+      shortName:
+          shortName ?? (name != null ? _deriveShort(nextName) : this.shortName),
       colorValue: colorValue ?? this.colorValue,
       players: players ?? this.players,
     );
@@ -282,11 +273,11 @@ class TeamInfo {
   }
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'shortName': shortName,
-        'color': colorToHex(colorValue),
-        'players': players.map((p) => p.toMap()).toList(),
-      };
+    'name': name,
+    'shortName': shortName,
+    'color': colorToHex(colorValue),
+    'players': players.map((p) => p.toMap()).toList(),
+  };
 
   static const List<TeamPlayer> defaultLocalPlayers = [
     TeamPlayer(dorsal: 10, name: 'J. Martínez', role: 'Armador'),
@@ -339,11 +330,11 @@ class PlayerPosition {
   }
 
   Map<String, dynamic> toMap() => {
-        'zone': zone,
-        'dorsal': dorsal,
-        'name': name,
-        'role': role,
-      };
+    'zone': zone,
+    'dorsal': dorsal,
+    'name': name,
+    'role': role,
+  };
 
   factory PlayerPosition.fromMap(Map<String, dynamic> map, TeamInfo team) {
     final dorsal = _int(map['dorsal'], 1);
@@ -389,30 +380,30 @@ class MatchEvent {
   String get scoreLabel => '$localPoints-$visitPoints';
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'setNumber': setNumber,
-        'localPoints': localPoints,
-        'visitPoints': visitPoints,
-        'isLocalTeam': isLocalTeam,
-        'teamName': teamName,
-        'actionType': actionType.name,
-        'description': description,
-        'playerTag': playerTag,
-        'isSetPointWon': isSetPointWon,
-      };
+    'id': id,
+    'setNumber': setNumber,
+    'localPoints': localPoints,
+    'visitPoints': visitPoints,
+    'isLocalTeam': isLocalTeam,
+    'teamName': teamName,
+    'actionType': actionType.name,
+    'description': description,
+    'playerTag': playerTag,
+    'isSetPointWon': isSetPointWon,
+  };
 
   factory MatchEvent.fromMap(Map<String, dynamic> map) => MatchEvent(
-        id: _str(map['id']),
-        setNumber: _int(map['setNumber'], 1),
-        localPoints: _int(map['localPoints']),
-        visitPoints: _int(map['visitPoints']),
-        isLocalTeam: _bool(map['isLocalTeam'], true),
-        teamName: _str(map['teamName']),
-        actionType: PointActionTypeExtension.parse(map['actionType']),
-        description: _str(map['description']),
-        playerTag: _str(map['playerTag']),
-        isSetPointWon: _bool(map['isSetPointWon']),
-      );
+    id: _str(map['id']),
+    setNumber: _int(map['setNumber'], 1),
+    localPoints: _int(map['localPoints']),
+    visitPoints: _int(map['visitPoints']),
+    isLocalTeam: _bool(map['isLocalTeam'], true),
+    teamName: _str(map['teamName']),
+    actionType: PointActionTypeExtension.parse(map['actionType']),
+    description: _str(map['description']),
+    playerTag: _str(map['playerTag']),
+    isSetPointWon: _bool(map['isSetPointWon']),
+  );
 }
 
 class RallyPointNode {
@@ -431,11 +422,11 @@ class RallyPointNode {
   });
 
   Map<String, dynamic> toMap() => {
-        'l': localScore,
-        'v': visitScore,
-        'h': isLocalScoring,
-        'a': actionType.name,
-      };
+    'l': localScore,
+    'v': visitScore,
+    'h': isLocalScoring,
+    'a': actionType.name,
+  };
 
   factory RallyPointNode.fromMap(Map<String, dynamic> map, int setNumber) =>
       RallyPointNode(
@@ -512,21 +503,21 @@ class SetStatsData {
   }
 
   Map<String, dynamic> toMap() => {
-        'setNumber': setNumber,
-        'localScore': localScore,
-        'visitScore': visitScore,
-        'isCompleted': isCompleted,
-        'durationSeconds': durationSeconds,
-        'localAttacks': localAttacks,
-        'visitAttacks': visitAttacks,
-        'localBlocks': localBlocks,
-        'visitBlocks': visitBlocks,
-        'localAces': localAces,
-        'visitAces': visitAces,
-        'localUnforcedErrors': localUnforcedErrors,
-        'visitUnforcedErrors': visitUnforcedErrors,
-        'timeline': timeline.map((n) => n.toMap()).toList(),
-      };
+    'setNumber': setNumber,
+    'localScore': localScore,
+    'visitScore': visitScore,
+    'isCompleted': isCompleted,
+    'durationSeconds': durationSeconds,
+    'localAttacks': localAttacks,
+    'visitAttacks': visitAttacks,
+    'localBlocks': localBlocks,
+    'visitBlocks': visitBlocks,
+    'localAces': localAces,
+    'visitAces': visitAces,
+    'localUnforcedErrors': localUnforcedErrors,
+    'visitUnforcedErrors': visitUnforcedErrors,
+    'timeline': timeline.map((n) => n.toMap()).toList(),
+  };
 
   factory SetStatsData.fromMap(Map<String, dynamic> map, int fallbackNumber) {
     final number = _int(map['setNumber'], fallbackNumber);
@@ -667,11 +658,24 @@ class MatchModel {
 
   bool get isTimerRunning => isLive && setStartedAt != null;
 
+  /// Sets jugados o en juego (0 antes de empezar). No siempre se juegan los
+  /// cinco: el partido termina en cuanto un equipo gana tres.
+  int get playedSetsCount {
+    if (isUpcoming) return 0;
+    if (isMatchFinished) {
+      return (localSetsWon + visitSetsWon).clamp(1, setsHistory.length);
+    }
+    return currentSet.clamp(1, setsHistory.length);
+  }
+
   /// Segundos transcurridos de un set específico (1..5).
   int setElapsedSeconds(int setNumber, [DateTime? now]) {
     if (setNumber < 1 || setNumber > setsHistory.length) return 0;
     final s = setsHistory[setNumber - 1];
-    if (s.isCompleted || !isLive || setNumber != currentSet || setStartedAt == null) {
+    if (s.isCompleted ||
+        !isLive ||
+        setNumber != currentSet ||
+        setStartedAt == null) {
       return s.durationSeconds;
     }
     final delta = (now ?? DateTime.now()).difference(setStartedAt!).inSeconds;
@@ -716,63 +720,62 @@ class MatchModel {
   /// directos (`localName`, `visitName`, `tournament`, etc.) para que puedas
   /// editarlos directamente en el documento del partido desde Firebase Console.
   Map<String, dynamic> toMap() => {
-        'tournamentId': tournament.id,
-        'tournament': tournament.name,
-        'homeTeamId': localTeam.id,
-        'awayTeamId': visitTeam.id,
-        'localName': localTeam.name,
-        'visitName': visitTeam.name,
-        'localShort': localTeam.shortName,
-        'visitShort': visitTeam.shortName,
-        'localColor': colorToHex(localTeam.colorValue),
-        'visitColor': colorToHex(visitTeam.colorValue),
-        'stage': stage,
-        'venue': venue,
-        'startTime': startTime,
-        ...toStateMap(),
-      };
+    'tournamentId': tournament.id,
+    'tournament': tournament.name,
+    'homeTeamId': localTeam.id,
+    'awayTeamId': visitTeam.id,
+    'localName': localTeam.name,
+    'visitName': visitTeam.name,
+    'localShort': localTeam.shortName,
+    'visitShort': visitTeam.shortName,
+    'localColor': colorToHex(localTeam.colorValue),
+    'visitColor': colorToHex(visitTeam.colorValue),
+    'stage': stage,
+    'venue': venue,
+    'startTime': startTime,
+    ...toStateMap(),
+  };
 
   /// Estado que cambia durante el juego o desde la edición rápida.
   Map<String, dynamic> toStateMap() => {
-        'localName': localTeam.name,
-        'visitName': visitTeam.name,
-        'localShort': localTeam.shortName,
-        'visitShort': visitTeam.shortName,
-        'localColor': colorToHex(localTeam.colorValue),
-        'visitColor': colorToHex(visitTeam.colorValue),
-        'tournament': tournament.name,
-        'stage': stage,
-        'venue': venue,
-        'startTime': startTime,
-        'currentSet': currentSet,
-        'localSets': localSetsWon,
-        'visitSets': visitSetsWon,
-        'localPoints': localPoints,
-        'visitPoints': visitPoints,
-        'isLocalServing': isLocalServing,
-        'status': status.name,
-        'isStarted': isMatchStarted,
-        'isFinished': isMatchFinished,
-        'setStartedAt': setStartedAt,
-        'recentEvent': recentEvent,
-        'sets': setsHistory.map((s) => s.toMap()).toList(),
-        'events':
-            events.take(maxStoredEvents).map((e) => e.toMap()).toList(),
-        'localLineup': localLineup.map((p) => p.toMap()).toList(),
-        'visitLineup': visitLineup.map((p) => p.toMap()).toList(),
-        'rev': rev,
-        'updatedBy': updatedBy,
-      };
+    'localName': localTeam.name,
+    'visitName': visitTeam.name,
+    'localShort': localTeam.shortName,
+    'visitShort': visitTeam.shortName,
+    'localColor': colorToHex(localTeam.colorValue),
+    'visitColor': colorToHex(visitTeam.colorValue),
+    'tournament': tournament.name,
+    'stage': stage,
+    'venue': venue,
+    'startTime': startTime,
+    'currentSet': currentSet,
+    'localSets': localSetsWon,
+    'visitSets': visitSetsWon,
+    'localPoints': localPoints,
+    'visitPoints': visitPoints,
+    'isLocalServing': isLocalServing,
+    'status': status.name,
+    'isStarted': isMatchStarted,
+    'isFinished': isMatchFinished,
+    'setStartedAt': setStartedAt,
+    'recentEvent': recentEvent,
+    'sets': setsHistory.map((s) => s.toMap()).toList(),
+    'events': events.take(maxStoredEvents).map((e) => e.toMap()).toList(),
+    'localLineup': localLineup.map((p) => p.toMap()).toList(),
+    'visitLineup': visitLineup.map((p) => p.toMap()).toList(),
+    'rev': rev,
+    'updatedBy': updatedBy,
+  };
 
   static List<PlayerPosition> _defaultLineupFor(TeamInfo team) => [
-        for (var i = 0; i < team.players.length && i < 6; i++)
-          PlayerPosition(
-            zone: i + 1,
-            dorsal: team.players[i].dorsal,
-            name: team.players[i].name,
-            role: team.players[i].role,
-          ),
-      ];
+    for (var i = 0; i < team.players.length && i < 6; i++)
+      PlayerPosition(
+        zone: i + 1,
+        dorsal: team.players[i].dorsal,
+        name: team.players[i].name,
+        role: team.players[i].role,
+      ),
+  ];
 
   static (String?, String?) _parseTeamsFromDocId(String id) {
     final match = RegExp(
@@ -807,7 +810,8 @@ class MatchModel {
       'liga-universitaria-voleibol',
     );
 
-    final baseHome = teams[homeId] ??
+    final baseHome =
+        teams[homeId] ??
         TeamInfo(
           id: homeId,
           name: rawHomeId.isNotEmpty
@@ -821,7 +825,8 @@ class MatchModel {
           colorValue: homeId == 'fime' ? 0xFF007A33 : 0xFFF2A900,
           players: TeamInfo.defaultLocalPlayers,
         );
-    final baseAway = teams[awayId] ??
+    final baseAway =
+        teams[awayId] ??
         TeamInfo(
           id: awayId,
           name: rawAwayId.isNotEmpty
@@ -872,8 +877,11 @@ class MatchModel {
     );
 
     final baseTournament = tournaments[tournamentId];
-    final customTournamentName =
-        _nonEmptyStr(map['tournament'], map['tournamentName'], '');
+    final customTournamentName = _nonEmptyStr(
+      map['tournament'],
+      map['tournamentName'],
+      '',
+    );
     final tournament = customTournamentName.isNotEmpty
         ? TournamentInfo(
             id: baseTournament?.id ?? tournamentId,
@@ -896,7 +904,8 @@ class MatchModel {
         : _int(map['visitSetsWon']);
 
     final rawEvents = _maps(map['events']);
-    final hasScoreActivity = localSetsWon > 0 ||
+    final hasScoreActivity =
+        localSetsWon > 0 ||
         visitSetsWon > 0 ||
         localPoints > 0 ||
         visitPoints > 0 ||
@@ -909,8 +918,8 @@ class MatchModel {
     final rawStarted = map.containsKey('isStarted')
         ? _bool(map['isStarted'])
         : (map.containsKey('isMatchStarted')
-            ? _bool(map['isMatchStarted'])
-            : hasScoreActivity);
+              ? _bool(map['isMatchStarted'])
+              : hasScoreActivity);
 
     final parsedStatus = MatchStatusExtension.parse(
       map['status'],
@@ -920,7 +929,8 @@ class MatchModel {
 
     final isMatchFinished = parsedStatus == MatchStatus.finished;
     final isMatchStarted =
-        parsedStatus == MatchStatus.live || parsedStatus == MatchStatus.finished;
+        parsedStatus == MatchStatus.live ||
+        parsedStatus == MatchStatus.finished;
 
     final rawSets = _maps(map['sets']);
     final sets = <SetStatsData>[
@@ -969,8 +979,9 @@ class MatchModel {
         null,
         'Gimnasio Luis E. Todd, Monterrey',
       ),
-      startTime:
-          start is DateTime ? start : DateTime(now.year, now.month, 24, 8, 30),
+      startTime: start is DateTime
+          ? start
+          : DateTime(now.year, now.month, 24, 8, 30),
       localTeam: home,
       visitTeam: away,
       currentSet: currentSet,
@@ -1101,9 +1112,11 @@ class MatchModel {
     final prevSet = currentSet;
     final prevWasFinished = isMatchFinished;
     final liveDurationBeforeUndo =
-        (!isMatchFinished && currentSet >= 1 && currentSet <= setsHistory.length)
-            ? setsHistory[currentSet - 1].durationSeconds
-            : 0;
+        (!isMatchFinished &&
+            currentSet >= 1 &&
+            currentSet <= setsHistory.length)
+        ? setsHistory[currentSet - 1].durationSeconds
+        : 0;
     final liveStartedAtBeforeUndo = setStartedAt;
 
     final snap = _undoStack.removeLast();
@@ -1159,10 +1172,7 @@ class MatchModel {
     }
   }
 
-  void addPoint({
-    required bool isLocal,
-    required PointActionType actionType,
-  }) {
+  void addPoint({required bool isLocal, required PointActionType actionType}) {
     if (isMatchFinished) return;
 
     _saveSnapshot();
@@ -1236,9 +1246,7 @@ class MatchModel {
       featuredPlayer = activeLineup.firstWhere(
         (p) => actionType == PointActionType.ace
             ? p.zone == 1
-            : (actionType == PointActionType.block
-                ? p.zone == 3
-                : p.zone == 4),
+            : (actionType == PointActionType.block ? p.zone == 3 : p.zone == 4),
         orElse: () => activeLineup.first,
       );
     }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Tokens de color de SetPoint. Inspirados en la densidad y claridad de
@@ -19,6 +19,25 @@ class SpColors extends ThemeExtension<SpColors> {
   final Color header;
   final Color onHeader;
 
+  /// Acento para momentos clave (punto de set o de partido). Se usa poco a
+  /// propósito, para que destaque frente al azul de marca.
+  final Color accent;
+  final Color onAccent;
+
+  /// Superficies de vidrio (barra de navegación flotante, etc.).
+  final Color glassFill;
+  final Color glassBorder;
+  final Color glassHighlight;
+  final Color glassShadow;
+
+  /// Lente de vidrio que marca la pestaña activa dentro de la barra.
+  /// Cuerpo casi transparente, tinte de marca, contorno fino y brillo
+  /// especular del borde (la luz que «atrapa» el cristal).
+  final Color lensFill;
+  final Color lensTint;
+  final Color lensBorder;
+  final Color lensRim;
+
   const SpColors({
     required this.canvas,
     required this.card,
@@ -33,10 +52,20 @@ class SpColors extends ThemeExtension<SpColors> {
     required this.win,
     required this.header,
     required this.onHeader,
+    required this.accent,
+    required this.onAccent,
+    required this.glassFill,
+    required this.glassBorder,
+    required this.glassHighlight,
+    required this.glassShadow,
+    required this.lensFill,
+    required this.lensTint,
+    required this.lensBorder,
+    required this.lensRim,
   });
 
-  static const light = SpColors(
-    canvas: Color(0xFFEEF1F5),
+  static const _defaultLight = SpColors(
+    canvas: Color(0xFFF2F4F8),
     card: Color(0xFFFFFFFF),
     raised: Color(0xFFF4F6F9),
     line: Color(0xFFE3E7ED),
@@ -49,9 +78,19 @@ class SpColors extends ThemeExtension<SpColors> {
     win: Color(0xFF129A55),
     header: Color(0xFF3449E8),
     onHeader: Color(0xFFFFFFFF),
+    accent: Color(0xFFFFB020),
+    onAccent: Color(0xFF2B1D00),
+    glassFill: Color(0x9EFFFFFF),
+    glassBorder: Color(0xB3FFFFFF),
+    glassHighlight: Color(0x80FFFFFF),
+    glassShadow: Color(0x1F1D2A55),
+    lensFill: Color(0x59FFFFFF),
+    lensTint: Color(0x143449E8),
+    lensBorder: Color(0x0D000000),
+    lensRim: Color(0xFFFFFFFF),
   );
 
-  static const dark = SpColors(
+  static const _defaultDark = SpColors(
     canvas: Color(0xFF101116),
     card: Color(0xFF1A1B22),
     raised: Color(0xFF23252E),
@@ -65,6 +104,118 @@ class SpColors extends ThemeExtension<SpColors> {
     win: Color(0xFF3CCB7F),
     header: Color(0xFF1A1B22),
     onHeader: Color(0xFFECEDF1),
+    accent: Color(0xFFFFC14D),
+    onAccent: Color(0xFF2B1D00),
+    glassFill: Color(0x992A2C38),
+    glassBorder: Color(0x2EFFFFFF),
+    glassHighlight: Color(0x14FFFFFF),
+    glassShadow: Color(0x73000000),
+    lensFill: Color(0x14FFFFFF),
+    lensTint: Color(0x267C8CFF),
+    lensBorder: Color(0x1FFFFFFF),
+    lensRim: Color(0xB3FFFFFF),
+  );
+
+  /// Paletas activas. Sin `SP_BRAND` son exactamente las de arriba (azul);
+  /// con `SP_BRAND` se recalculan los tonos de marca a partir de ese color.
+  static final SpColors light = switch (_brandOverride) {
+    null => _defaultLight,
+    final c => _defaultLight._withBrand(
+      brand: _legibleOnLight(c),
+      onBrand: _onColor(_legibleOnLight(c)),
+      header: _legibleOnLight(c),
+      lensTint: _legibleOnLight(c).withValues(alpha: 0.08),
+    ),
+  };
+
+  static final SpColors dark = switch (_brandOverride) {
+    null => _defaultDark,
+    final c => _defaultDark._withBrand(
+      brand: _forDark(c),
+      onBrand: _deep(c),
+      header: _defaultDark.header,
+      lensTint: _forDark(c).withValues(alpha: 0.15),
+    ),
+  };
+
+  /// Color de marca elegido al compilar:
+  /// `flutter build apk --release --dart-define=SP_BRAND=129A55`.
+  /// Acepta `RRGGBB`, `#RRGGBB` o `0xFFRRGGBB`. Vacío o inválido → azul.
+  static final Color? _brandOverride = _parseBrand(
+    const String.fromEnvironment('SP_BRAND'),
+  );
+
+  static Color? _parseBrand(String raw) {
+    var hex = raw.trim().toUpperCase().replaceFirst('#', '');
+    if (hex.startsWith('0X')) hex = hex.substring(2);
+    if (hex.length == 6) hex = 'FF$hex';
+    final value = hex.length == 8 ? int.tryParse(hex, radix: 16) : null;
+    if (raw.isNotEmpty && value == null) {
+      debugPrint('SP_BRAND inválido ("$raw"); se usa el azul por defecto.');
+    }
+    return value == null ? null : Color(value);
+  }
+
+  /// En modo claro la marca se usa como texto sobre blanco: si el color es
+  /// muy claro (p. ej. amarillo) se oscurece hasta que se lea bien.
+  static Color _legibleOnLight(Color c) {
+    var hsl = HSLColor.fromColor(c);
+    while (hsl.toColor().computeLuminance() > 0.3 && hsl.lightness > 0.2) {
+      hsl = hsl.withLightness(hsl.lightness - 0.02);
+    }
+    return hsl.toColor();
+  }
+
+  /// Variante luminosa para destacar sobre fondos oscuros.
+  static Color _forDark(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl
+        .withLightness(hsl.lightness < 0.72 ? 0.72 : hsl.lightness)
+        .withSaturation((hsl.saturation * 1.15).clamp(0.0, 1.0))
+        .toColor();
+  }
+
+  /// Tono muy oscuro del mismo color, para texto sobre la marca en modo
+  /// oscuro.
+  static Color _deep(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness(0.12).withSaturation(0.55).toColor();
+  }
+
+  static Color _onColor(Color c) =>
+      ThemeData.estimateBrightnessForColor(c) == Brightness.dark
+      ? const Color(0xFFFFFFFF)
+      : const Color(0xFF1D1F24);
+
+  SpColors _withBrand({
+    required Color brand,
+    required Color onBrand,
+    required Color header,
+    required Color lensTint,
+  }) => SpColors(
+    canvas: canvas,
+    card: card,
+    raised: raised,
+    line: line,
+    ink: ink,
+    muted: muted,
+    faint: faint,
+    brand: brand,
+    onBrand: onBrand,
+    live: live,
+    win: win,
+    header: header,
+    onHeader: header == this.header ? onHeader : _onColor(header),
+    accent: accent,
+    onAccent: onAccent,
+    glassFill: glassFill,
+    glassBorder: glassBorder,
+    glassHighlight: glassHighlight,
+    glassShadow: glassShadow,
+    lensFill: lensFill,
+    lensTint: lensTint,
+    lensBorder: lensBorder,
+    lensRim: lensRim,
   );
 
   @override
@@ -88,6 +239,16 @@ class SpColors extends ThemeExtension<SpColors> {
       win: l(win, other.win),
       header: l(header, other.header),
       onHeader: l(onHeader, other.onHeader),
+      accent: l(accent, other.accent),
+      onAccent: l(onAccent, other.onAccent),
+      glassFill: l(glassFill, other.glassFill),
+      glassBorder: l(glassBorder, other.glassBorder),
+      glassHighlight: l(glassHighlight, other.glassHighlight),
+      glassShadow: l(glassShadow, other.glassShadow),
+      lensFill: l(lensFill, other.lensFill),
+      lensTint: l(lensTint, other.lensTint),
+      lensBorder: l(lensBorder, other.lensBorder),
+      lensRim: l(lensRim, other.lensRim),
     );
   }
 }
@@ -243,22 +404,13 @@ class AppTheme {
         indicatorColor: c.brand,
         indicatorSize: TabBarIndicatorSize.label,
         dividerColor: c.line,
-        labelStyle: _font(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
-        unselectedLabelStyle: _font(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
+        labelStyle: _font(fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: _font(fontSize: 14, fontWeight: FontWeight.w600),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: c.ink,
-        contentTextStyle: _font(
-          color: c.card,
-          fontWeight: FontWeight.w600,
-        ),
+        contentTextStyle: _font(color: c.card, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );

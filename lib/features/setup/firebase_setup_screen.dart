@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -38,8 +38,10 @@ class FirebaseSetupScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
             children: [
-              Text('Conecta tu base de datos',
-                  style: context.type.headlineSmall),
+              Text(
+                'Conecta tu base de datos',
+                style: context.type.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text(
                 'Los partidos, equipos y torneos se guardan en Cloud Firestore. '
@@ -78,8 +80,10 @@ class FirebaseSetupScreen extends StatelessWidget {
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(top: 3),
-                              child: Text(steps[i].$1,
-                                  style: context.type.bodyMedium),
+                              child: Text(
+                                steps[i].$1,
+                                style: context.type.bodyMedium,
+                              ),
                             ),
                             if (steps[i].$2 != null) ...[
                               const SizedBox(height: 8),

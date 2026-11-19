@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/glass_widgets.dart';
+import '../../core/widgets/live_clock.dart';
 import '../../core/widgets/sp_widgets.dart';
 import '../../models/match_model.dart';
 import '../matches/match_controller.dart';
@@ -38,26 +41,30 @@ class ScoreboardScreen extends StatelessWidget {
     final endedSetDuration = formatDurationSeconds(
       _match.setsHistory[previousSet - 1].durationSeconds,
     );
+    // Vibración proporcional a lo que pasó: punto, fin de set o de partido.
+    if (_match.isMatchFinished) {
+      HapticFeedback.heavyImpact();
+    } else if (_match.currentSet != previousSet) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
     if (_match.isMatchFinished) {
       final winner = _match.localSetsWon > _match.visitSetsWon
           ? _match.localTeamName
           : _match.visitTeamName;
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Partido terminado. Gana $winner '
-            '${_match.localSetsWon}-${_match.visitSetsWon} '
-            '(Set $previousSet: $endedSetDuration)',
-          ),
+        glassSnackBar(
+          'Partido terminado. Gana $winner '
+          '${_match.localSetsWon}-${_match.visitSetsWon} '
+          '(Set $previousSet: $endedSetDuration)',
         ),
       );
     } else if (_match.currentSet != previousSet) {
       messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Set $previousSet terminado en $endedSetDuration. '
-            'Empieza el set ${_match.currentSet}.',
-          ),
+        glassSnackBar(
+          'Set $previousSet terminado en $endedSetDuration. '
+          'Empieza el set ${_match.currentSet}.',
           duration: const Duration(seconds: 2),
         ),
       );
@@ -68,7 +75,12 @@ class ScoreboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       primary: true,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        28 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Center(
           child: ConstrainedBox(
@@ -98,7 +110,12 @@ class ScoreboardScreen extends StatelessWidget {
     return SectionCard(
       title: 'Registrar punto',
       trailing: TextButton.icon(
-        onPressed: m.canUndo ? controller.undo : null,
+        onPressed: m.canUndo
+            ? () {
+                HapticFeedback.selectionClick();
+                controller.undo();
+              }
+            : null,
         style: TextButton.styleFrom(
           foregroundColor: sp.brand,
           visualDensity: VisualDensity.compact,
@@ -236,6 +253,8 @@ class ScoreboardScreen extends StatelessWidget {
   Widget _buildSetsTable(BuildContext context) {
     final sp = context.sp;
     final m = _match;
+    // Solo los sets jugados; antes de empezar se muestra el 1.º vacío.
+    final visibleSets = m.playedSetsCount < 1 ? 1 : m.playedSetsCount;
     final head = TextStyle(
       color: sp.faint,
       fontSize: 12,
@@ -265,29 +284,32 @@ class ScoreboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-            for (final s in m.setsHistory)
+            for (final s in m.setsHistory.take(visibleSets))
               SizedBox(
                 width: 42,
-                child: Builder(builder: (context) {
-                  final played = s.isCompleted ||
-                      (s.setNumber == m.currentSet && m.isLive);
-                  final score = isLocal ? s.localScore : s.visitScore;
-                  final opp = isLocal ? s.visitScore : s.localScore;
-                  final current = s.setNumber == m.currentSet && m.isLive;
-                  final won = s.isCompleted && score > opp;
-                  return Text(
-                    played ? '$score' : '',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: current ? sp.live : (won ? sp.ink : sp.faint),
-                      fontWeight: won || current
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      fontSize: 14,
-                      fontFeatures: kTabular,
-                    ),
-                  );
-                }),
+                child: Builder(
+                  builder: (context) {
+                    final played =
+                        s.isCompleted ||
+                        (s.setNumber == m.currentSet && m.isLive);
+                    final score = isLocal ? s.localScore : s.visitScore;
+                    final opp = isLocal ? s.visitScore : s.localScore;
+                    final current = s.setNumber == m.currentSet && m.isLive;
+                    final won = s.isCompleted && score > opp;
+                    return Text(
+                      played ? '$score' : '',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: current ? sp.live : (won ? sp.ink : sp.faint),
+                        fontWeight: won || current
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        fontSize: 14,
+                        fontFeatures: kTabular,
+                      ),
+                    );
+                  },
+                ),
               ),
             SizedBox(
               width: 46,
@@ -323,48 +345,55 @@ class ScoreboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-            for (final s in m.setsHistory)
+            for (final s in m.setsHistory.take(visibleSets))
               SizedBox(
                 width: 42,
-                child: Builder(builder: (context) {
-                  final current = s.setNumber == m.currentSet && m.isLive;
-                  final played = s.isCompleted || current;
-                  final secs = m.setElapsedSeconds(s.setNumber);
-                  if (!played) return const SizedBox.shrink();
-                  return FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Text(
-                        formatDurationSeconds(secs),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: current ? sp.live : sp.muted,
-                          fontWeight:
-                              current ? FontWeight.w700 : FontWeight.w600,
-                          fontSize: 11.5,
-                          fontFeatures: kTabular,
+                child: LiveClock(
+                  enabled: s.setNumber == m.currentSet && m.isTimerRunning,
+                  builder: (context) {
+                    final current = s.setNumber == m.currentSet && m.isLive;
+                    final played = s.isCompleted || current;
+                    final secs = m.setElapsedSeconds(s.setNumber);
+                    if (!played) return const SizedBox.shrink();
+                    return FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Text(
+                          formatDurationSeconds(secs),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: current ? sp.live : sp.muted,
+                            fontWeight: current
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            fontSize: 11.5,
+                            fontFeatures: kTabular,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  },
+                ),
               ),
             SizedBox(
               width: 46,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerRight,
-                child: Text(
-                  m.isUpcoming
-                      ? '00:00'
-                      : formatDurationSeconds(m.totalMatchElapsedSeconds),
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: sp.muted,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
-                    fontFeatures: kTabular,
+                child: LiveClock(
+                  enabled: m.isTimerRunning,
+                  builder: (_) => Text(
+                    m.isUpcoming
+                        ? '00:00'
+                        : formatDurationSeconds(m.totalMatchElapsedSeconds),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: sp.muted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                      fontFeatures: kTabular,
+                    ),
                   ),
                 ),
               ),
@@ -381,7 +410,7 @@ class ScoreboardScreen extends StatelessWidget {
           Row(
             children: [
               const Expanded(child: SizedBox()),
-              for (var i = 1; i <= 5; i++)
+              for (var i = 1; i <= visibleSets; i++)
                 SizedBox(
                   width: 42,
                   child: Text(
@@ -436,9 +465,11 @@ class ScoreboardScreen extends StatelessWidget {
                   if (i > 0) const Divider(),
                   _EventRow(
                     event: recent[i],
-                    color: Color(recent[i].isLocalTeam
-                        ? m.localTeam.colorValue
-                        : m.visitTeam.colorValue),
+                    color: Color(
+                      recent[i].isLocalTeam
+                          ? m.localTeam.colorValue
+                          : m.visitTeam.colorValue,
+                    ),
                   ),
                 ],
               ],

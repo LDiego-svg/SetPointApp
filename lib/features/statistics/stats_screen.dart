@@ -1,18 +1,16 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/live_clock.dart';
 import '../../core/widgets/sp_widgets.dart';
 import '../../models/match_model.dart';
 
 class StatsScreen extends StatefulWidget {
   final MatchModel match;
 
-  const StatsScreen({
-    super.key,
-    required this.match,
-  });
+  const StatsScreen({super.key, required this.match});
 
   @override
   State<StatsScreen> createState() => _StatsScreenState();
@@ -20,17 +18,8 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen>
     with AutomaticKeepAliveClientMixin {
-  // 0 = ALL, 1 = 1ST, 2 = 2ND, 3 = 3RD, 4 = 4TH, 5 = 5TH
+  // 0 = partido completo, 1..5 = set concreto.
   int _selectedFilterIndex = 0;
-
-  static const List<String> _setChips = [
-    'Partido',
-    'Set 1',
-    'Set 2',
-    'Set 3',
-    'Set 4',
-    'Set 5',
-  ];
 
   MatchModel get _match => widget.match;
 
@@ -40,11 +29,24 @@ class _StatsScreenState extends State<StatsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    // Solo aparecen los sets jugados o en juego. Si el set elegido deja de
+    // existir (p. ej. tras deshacer o reiniciar), se vuelve al partido.
+    final playedSets = _match.playedSetsCount;
+    if (_selectedFilterIndex > playedSets) _selectedFilterIndex = 0;
+    final setChips = [
+      'Partido',
+      for (var i = 1; i <= playedSets; i++) 'Set $i',
+    ];
     final SetStatsData stats = _match.getStatsForFilter(_selectedFilterIndex);
 
     return ListView(
       primary: true,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        28 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Center(
           child: ConstrainedBox(
@@ -55,10 +57,9 @@ class _StatsScreenState extends State<StatsScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: PillTabs(
-                    labels: _setChips,
+                    labels: setChips,
                     selected: _selectedFilterIndex,
-                    highlighted:
-                        _match.isLive ? {_match.currentSet} : const {},
+                    highlighted: _match.isLive ? {_match.currentSet} : const {},
                     onChanged: (i) => setState(() => _selectedFilterIndex = i),
                   ),
                 ),
@@ -85,10 +86,7 @@ class _StatsScreenState extends State<StatsScreen>
     final nodes = stats.timeline;
     return SectionCard(
       title: 'Momentum',
-      trailing: Text(
-        '${nodes.length} puntos',
-        style: context.type.labelMedium,
-      ),
+      trailing: Text('${nodes.length} puntos', style: context.type.labelMedium),
       child: nodes.isEmpty
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -135,7 +133,7 @@ class _StatsScreenState extends State<StatsScreen>
 
   // 2. COMPARATIVA ESTILO SOFASCORE
   Widget _buildComparativeStatsCard(SetStatsData stats) {
-    final durationSecs = _selectedFilterIndex == 0
+    int durationSecs() => _selectedFilterIndex == 0
         ? _match.totalMatchElapsedSeconds
         : _match.setElapsedSeconds(_selectedFilterIndex);
     final rows = <(String, int, int)>[
@@ -143,14 +141,20 @@ class _StatsScreenState extends State<StatsScreen>
       ('Puntos de ataque', stats.localAttacks, stats.visitAttacks),
       ('Puntos de bloqueo', stats.localBlocks, stats.visitBlocks),
       ('Aces', stats.localAces, stats.visitAces),
-      ('Errores no forzados', stats.localUnforcedErrors,
-          stats.visitUnforcedErrors),
+      (
+        'Errores no forzados',
+        stats.localUnforcedErrors,
+        stats.visitUnforcedErrors,
+      ),
     ];
     return SectionCard(
       title: 'Estadísticas',
-      trailing: Text(
-        formatDurationSeconds(durationSecs),
-        style: context.type.labelMedium?.copyWith(fontFeatures: kTabular),
+      trailing: LiveClock(
+        enabled: _match.isTimerRunning,
+        builder: (context) => Text(
+          formatDurationSeconds(durationSecs()),
+          style: context.type.labelMedium?.copyWith(fontFeatures: kTabular),
+        ),
       ),
       child: Column(
         children: [
@@ -179,34 +183,35 @@ class _StatsScreenState extends State<StatsScreen>
     final double localRatio = total == 0 ? 0 : localValue / total;
     final double visitRatio = total == 0 ? 0 : visitValue / total;
 
-    final bool localLeads =
-        lowerIsBetter ? localValue < visitValue : localValue > visitValue;
-    final bool visitLeads =
-        lowerIsBetter ? visitValue < localValue : visitValue > localValue;
+    final bool localLeads = lowerIsBetter
+        ? localValue < visitValue
+        : localValue > visitValue;
+    final bool visitLeads = lowerIsBetter
+        ? visitValue < localValue
+        : visitValue > localValue;
 
     Widget value(int v, bool leads, Color color) => Container(
-          constraints: const BoxConstraints(minWidth: 32),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: leads ? color : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '$v',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: leads
-                  ? (ThemeData.estimateBrightnessForColor(color) ==
-                          Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF15161A))
-                  : sp.ink,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              fontFeatures: kTabular,
-            ),
-          ),
-        );
+      constraints: const BoxConstraints(minWidth: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: leads ? color : Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$v',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: leads
+              ? (ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+                    ? Colors.white
+                    : const Color(0xFF15161A))
+              : sp.ink,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          fontFeatures: kTabular,
+        ),
+      ),
+    );
 
     Widget bar(double ratio, Color color, bool leads, {required bool rtl}) {
       return Expanded(
@@ -269,40 +274,37 @@ class _StatsScreenState extends State<StatsScreen>
     final streaks = _computeStreaks(nodes);
 
     Widget best(TeamInfo team, int value, Color color) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: sp.raised,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                TeamCrest(shortName: team.shortName, color: color, size: 26),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$value seguidos',
-                        style: TextStyle(
-                          color: sp.ink,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          fontFeatures: kTabular,
-                        ),
-                      ),
-                      Text(
-                        'Mejor racha',
-                        style: context.type.labelSmall,
-                      ),
-                    ],
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: sp.raised,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            TeamCrest(shortName: team.shortName, color: color, size: 26),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$value seguidos',
+                    style: TextStyle(
+                      color: sp.ink,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFeatures: kTabular,
+                    ),
                   ),
-                ),
-              ],
+                  Text('Mejor racha', style: context.type.labelSmall),
+                ],
+              ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
 
     return SectionCard(
       title: 'Rachas',
@@ -345,8 +347,9 @@ class _StatsScreenState extends State<StatsScreen>
                     ),
                     Text(
                       'Set ${run.setNumber}, hasta ${run.endScore}',
-                      style: context.type.labelMedium
-                          ?.copyWith(fontFeatures: kTabular),
+                      style: context.type.labelMedium?.copyWith(
+                        fontFeatures: kTabular,
+                      ),
                     ),
                   ],
                 ),

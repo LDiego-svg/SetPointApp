@@ -30,7 +30,7 @@ class MatchController extends ChangeNotifier {
 
   /// Pilas de deshacer de los partidos cerrados, con la `rev` que tenían.
   static final Map<String, ({int rev, List<MatchSnapshot> history})>
-      _savedUndo = {};
+  _savedUndo = {};
 
   final MatchRepository repository;
   final String matchId;
@@ -44,7 +44,6 @@ class MatchController extends ChangeNotifier {
   String? saveError;
 
   StreamSubscription<MatchModel?>? _sub;
-  Timer? _clockTicker;
   int _pendingSaves = 0;
   int? _lastSavedRev;
 
@@ -55,46 +54,43 @@ class MatchController extends ChangeNotifier {
   }) : match = initial {
     loading = initial == null;
     if (initial != null) _restoreUndo(initial);
-    _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-      final m = match;
-      if (m != null && m.isTimerRunning) {
-        notifyListeners();
-      }
-    });
-    _sub = repository.watchMatch(matchId).listen(
-      (remote) {
-        loading = false;
-        error = null;
-        if (remote == null) {
-          notFound = true;
-        } else if (match == null) {
-          match = remote;
-          _restoreUndo(remote);
-          notFound = false;
-        } else {
-          final local = match!;
-          if (_pendingSaves > 0 && remote.rev < local.rev) {
-            // Dato anterior a un guardado local que aún no termina.
-            return;
-          }
-          if (remote.rev == _lastSavedRev &&
-              remote.updatedBy.isNotEmpty &&
-              remote.updatedBy != sessionId) {
-            saveError = 'Otro dispositivo modificó el partido al mismo '
-                'tiempo. Se cargó su marcador; revisa el último punto.';
-            _lastSavedRev = null;
-          }
-          local.applyRemote(remote);
-          notFound = false;
-        }
-        notifyListeners();
-      },
-      onError: (Object e) {
-        loading = false;
-        error = e;
-        notifyListeners();
-      },
-    );
+    _sub = repository
+        .watchMatch(matchId)
+        .listen(
+          (remote) {
+            loading = false;
+            error = null;
+            if (remote == null) {
+              notFound = true;
+            } else if (match == null) {
+              match = remote;
+              _restoreUndo(remote);
+              notFound = false;
+            } else {
+              final local = match!;
+              if (_pendingSaves > 0 && remote.rev < local.rev) {
+                // Dato anterior a un guardado local que aún no termina.
+                return;
+              }
+              if (remote.rev == _lastSavedRev &&
+                  remote.updatedBy.isNotEmpty &&
+                  remote.updatedBy != sessionId) {
+                saveError =
+                    'Otro dispositivo modificó el partido al mismo '
+                    'tiempo. Se cargó su marcador; revisa el último punto.';
+                _lastSavedRev = null;
+              }
+              local.applyRemote(remote);
+              notFound = false;
+            }
+            notifyListeners();
+          },
+          onError: (Object e) {
+            loading = false;
+            error = e;
+            notifyListeners();
+          },
+        );
   }
 
   /// Recupera la pila conservada solo si nuestro último guardado sigue siendo
@@ -218,8 +214,9 @@ class MatchController extends ChangeNotifier {
         break;
       case MatchStatus.finished:
         if (m.setStartedAt != null) {
-          m.setsHistory[m.currentSet - 1].durationSeconds =
-              m.setElapsedSeconds(m.currentSet);
+          m.setsHistory[m.currentSet - 1].durationSeconds = m.setElapsedSeconds(
+            m.currentSet,
+          );
         }
         m.isMatchStarted = true;
         m.isMatchFinished = true;
@@ -249,7 +246,6 @@ class MatchController extends ChangeNotifier {
   @override
   void dispose() {
     _saveUndo();
-    _clockTicker?.cancel();
     _sub?.cancel();
     super.dispose();
   }

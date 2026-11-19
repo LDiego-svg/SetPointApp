@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_theme.dart';
 
@@ -20,8 +20,8 @@ class TeamCrest extends StatelessWidget {
   Widget build(BuildContext context) {
     final onColor =
         ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-            ? Colors.white
-            : const Color(0xFF15161A);
+        ? Colors.white
+        : const Color(0xFF15161A);
     final label = shortName.length > 3 ? shortName.substring(0, 3) : shortName;
     return Container(
       width: size,
@@ -86,9 +86,10 @@ class _LiveDotState extends State<LiveDot> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final color = context.sp.live;
     return FadeTransition(
-      opacity: Tween(begin: 0.35, end: 1.0).animate(
-        CurvedAnimation(parent: _c, curve: Curves.easeInOut),
-      ),
+      opacity: Tween(
+        begin: 0.35,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
       child: Container(
         width: widget.size,
         height: widget.size,
@@ -176,9 +177,7 @@ class SectionCard extends StatelessWidget {
           if (title != null) ...[
             Row(
               children: [
-                Expanded(
-                  child: Text(title!, style: context.type.titleMedium),
-                ),
+                Expanded(child: Text(title!, style: context.type.titleMedium)),
                 ?trailing,
               ],
             ),
@@ -220,8 +219,10 @@ class PillTabs extends StatelessWidget {
                 onTap: () => onChanged(i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: i == selected ? sp.brand : sp.card,
                     borderRadius: BorderRadius.circular(999),

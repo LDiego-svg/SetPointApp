@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/sp_widgets.dart';
+import '../../core/widgets/glass_widgets.dart';
 import '../../data/match_repository.dart';
 import '../../models/match_model.dart';
 import '../lineup/lineup_screen.dart';
 import '../scoreboard/scoreboard_screen.dart';
 import '../statistics/stats_screen.dart';
 import 'match_controller.dart';
+import 'score_header.dart';
 
 class MatchDetailScreen extends StatefulWidget {
   final String matchId;
@@ -37,7 +38,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     final msg = c.saveError;
     if (msg != null && mounted) {
       c.clearSaveError();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(glassSnackBar(msg));
     }
   }
 
@@ -246,7 +247,10 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                         ButtonSegment(
                           value: MatchStatus.live,
                           label: Text('En vivo'),
-                          icon: Icon(Icons.play_circle_outline_rounded, size: 16),
+                          icon: Icon(
+                            Icons.play_circle_outline_rounded,
+                            size: 16,
+                          ),
                         ),
                         ButtonSegment(
                           value: MatchStatus.finished,
@@ -271,9 +275,11 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                           currentSet:
                               int.tryParse(setCtrl.text) ?? m.currentSet,
                           localSets:
-                              int.tryParse(localSetsCtrl.text) ?? m.localSetsWon,
+                              int.tryParse(localSetsCtrl.text) ??
+                              m.localSetsWon,
                           visitSets:
-                              int.tryParse(visitSetsCtrl.text) ?? m.visitSetsWon,
+                              int.tryParse(visitSetsCtrl.text) ??
+                              m.visitSetsWon,
                           localPoints:
                               int.tryParse(localPtsCtrl.text) ?? m.localPoints,
                           visitPoints:
@@ -327,13 +333,24 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
           length: 3,
           child: Scaffold(
             appBar: AppBar(
-              titleSpacing: 0,
+              leading: Center(
+                child: GlassIconButton(
+                  tooltip: 'Atrás',
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ),
+              titleSpacing: 4,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(m.tournament.name,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(
+                    m.tournament.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   if (m.stage.isNotEmpty)
                     Text(
                       m.stage,
@@ -346,7 +363,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                 ],
               ),
               actions: [
-                IconButton(
+                GlassIconButton(
                   tooltip: 'Reiniciar partido a 0-0',
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
@@ -374,27 +391,28 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                     final ok = await c.resetMatch();
                     if (ok && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Partido reiniciado a 0-0'),
-                          duration: Duration(seconds: 2),
+                        glassSnackBar(
+                          'Partido reiniciado a 0-0',
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     }
                   },
-                  icon: const Icon(Icons.restart_alt_rounded),
+                  icon: Icons.restart_alt_rounded,
                 ),
-                IconButton(
+                const SizedBox(width: 8),
+                GlassIconButton(
                   tooltip: 'Editar datos en Firestore',
                   onPressed: () => _openEditSheet(m),
-                  icon: const Icon(Icons.edit_note_rounded),
+                  icon: Icons.edit_note_rounded,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 14),
               ],
             ),
             body: NestedScrollView(
               headerSliverBuilder: (context, _) => [
                 SliverToBoxAdapter(
-                  child: _ScoreHeader(match: m, controller: c),
+                  child: ScoreHeader(match: m, controller: c),
                 ),
                 SliverPersistentHeader(
                   pinned: true,
@@ -421,363 +439,21 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   _TabBarDelegate(this.background);
 
   @override
-  double get minExtent => 46;
+  double get minExtent => 52;
   @override
-  double get maxExtent => 46;
+  double get maxExtent => 52;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
     return Container(
       color: background,
-      child: const TabBar(
-        tabs: [
-          Tab(text: 'Detalles'),
-          Tab(text: 'Estadísticas'),
-          Tab(text: 'Alineación'),
-        ],
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: const GlassTabBar(
+        labels: ['Detalles', 'Estadísticas', 'Alineación'],
       ),
     );
   }
 
   @override
   bool shouldRebuild(_TabBarDelegate old) => old.background != background;
-}
-
-/// Texto de alerta de punto de set / partido, o null si no aplica.
-String? setPointAlert(MatchModel m) {
-  if (!m.isLive) return null;
-  final target = m.targetPointsForCurrentSet;
-  final l = m.localPoints;
-  final v = m.visitPoints;
-  if (l >= target - 1 && l - v >= 1) {
-    return m.localSetsWon == 2
-        ? 'Punto de partido para ${m.localTeamName}'
-        : 'Punto de set para ${m.localTeamName}';
-  }
-  if (v >= target - 1 && v - l >= 1) {
-    return m.visitSetsWon == 2
-        ? 'Punto de partido para ${m.visitTeamName}'
-        : 'Punto de set para ${m.visitTeamName}';
-  }
-  return null;
-}
-
-class _ScoreHeader extends StatelessWidget {
-  final MatchModel match;
-  final MatchController controller;
-  const _ScoreHeader({required this.match, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final sp = context.sp;
-    final m = match;
-    final alert = setPointAlert(m);
-    final finishedSets = m.setsHistory.where((s) => s.isCompleted).toList();
-
-    return Container(
-      color: sp.card,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _TeamColumn(match: m, isLocal: true)),
-                  SizedBox(
-                    width: 170,
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _AnimatedNumber(
-                              value: m.localSetsWon,
-                              style: context.type.displaySmall!.copyWith(
-                                color: m.isUpcoming ? sp.faint : sp.ink,
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10),
-                              child: Text('–',
-                                  style: context.type.displaySmall
-                                      ?.copyWith(color: sp.faint)),
-                            ),
-                            _AnimatedNumber(
-                              value: m.visitSetsWon,
-                              style: context.type.displaySmall!.copyWith(
-                                color: m.isUpcoming ? sp.faint : sp.ink,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (m.isUpcoming) ...[
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Por empezar',
-                                  style: TextStyle(
-                                    color: sp.brand,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '00:00',
-                                  style: TextStyle(
-                                    color: sp.faint,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    fontFeatures: kTabular,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else if (m.isLive) ...[
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const LiveDot(),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${m.currentSet}.º set',
-                                  style: TextStyle(
-                                    color: sp.live,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Pressable(
-                                  onTap: controller.toggleTimer,
-                                  child: Text(
-                                    formatDurationSeconds(
-                                      m.currentSetElapsedSeconds,
-                                    ),
-                                    style: TextStyle(
-                                      color: m.isTimerRunning
-                                          ? sp.live
-                                          : sp.muted,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      fontFeatures: kTabular,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _AnimatedNumber(
-                                  value: m.localPoints,
-                                  style: _pointsStyle(sp),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6),
-                                  child: Text(':', style: _pointsStyle(sp)),
-                                ),
-                                _AnimatedNumber(
-                                  value: m.visitPoints,
-                                  style: _pointsStyle(sp),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else ...[
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Finalizado',
-                                  style: TextStyle(
-                                    color: sp.muted,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  formatDurationSeconds(
-                                    m.totalMatchElapsedSeconds,
-                                  ),
-                                  style: TextStyle(
-                                    color: sp.muted,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    fontFeatures: kTabular,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Expanded(child: _TeamColumn(match: m, isLocal: false)),
-                ],
-              ),
-              if (finishedSets.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 14,
-                  runSpacing: 4,
-                  children: [
-                    for (final s in finishedSets)
-                      Text(
-                        '${s.localScore}-${s.visitScore} (${formatDurationSeconds(s.durationSeconds)})',
-                        style: context.type.labelMedium
-                            ?.copyWith(fontFeatures: kTabular),
-                      ),
-                  ],
-                ),
-              ],
-              if (m.recentEvent.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Text(
-                  m.recentEvent,
-                  textAlign: TextAlign.center,
-                  style: context.type.bodySmall?.copyWith(color: sp.muted),
-                ),
-              ],
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                child: alert == null
-                    ? const SizedBox(width: double.infinity)
-                    : Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: sp.live.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            alert,
-                            style: TextStyle(
-                              color: sp.live,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  TextStyle _pointsStyle(SpColors sp) => TextStyle(
-        color: sp.live,
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.3,
-        fontFeatures: kTabular,
-      );
-}
-
-class _TeamColumn extends StatelessWidget {
-  final MatchModel match;
-  final bool isLocal;
-  const _TeamColumn({required this.match, required this.isLocal});
-
-  @override
-  Widget build(BuildContext context) {
-    final sp = context.sp;
-    final team = isLocal ? match.localTeam : match.visitTeam;
-    final serving = match.isLive && match.isLocalServing == isLocal;
-    return Column(
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            TeamCrest(
-              shortName: team.shortName,
-              color: Color(team.colorValue),
-              size: 52,
-            ),
-            if (serving)
-              Positioned(
-                right: -4,
-                bottom: -2,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: sp.card,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.sports_volleyball,
-                      size: 14, color: sp.brand),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          team.name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: context.type.titleSmall,
-        ),
-      ],
-    );
-  }
-}
-
-/// Número que se desliza hacia arriba al cambiar: comunica qué cambió sin
-/// llamar la atención. Sin animación si el sistema pide reducir movimiento.
-class _AnimatedNumber extends StatelessWidget {
-  final int value;
-  final TextStyle style;
-  const _AnimatedNumber({required this.value, required this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    final reduce = MediaQuery.of(context).disableAnimations;
-    return AnimatedSwitcher(
-      duration: Duration(milliseconds: reduce ? 0 : 260),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, anim) {
-        final incoming = child.key == ValueKey(value);
-        final offset = Tween<Offset>(
-          begin: Offset(0, incoming ? 0.45 : -0.45),
-          end: Offset.zero,
-        ).animate(anim);
-        return ClipRect(
-          child: SlideTransition(
-            position: offset,
-            child: FadeTransition(opacity: anim, child: child),
-          ),
-        );
-      },
-      child: Text('$value', key: ValueKey(value), style: style),
-    );
-  }
 }

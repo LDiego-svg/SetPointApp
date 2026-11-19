@@ -1,12 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/glass_widgets.dart';
+import '../../core/widgets/live_clock.dart';
 import '../../core/widgets/sp_widgets.dart';
 import '../../data/match_repository.dart';
 import '../../models/match_model.dart';
 import 'match_detail_screen.dart';
+import 'new_match/manage_matches_screen.dart';
+import 'score_header.dart';
 
 class MatchesScreen extends StatefulWidget {
   const MatchesScreen({super.key});
@@ -21,22 +25,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
   bool _seeding = false;
   Stream<List<MatchModel>>? _stream;
   MatchRepository? _repo;
-  Timer? _clockTicker;
-
-  @override
-  void initState() {
-    super.initState();
-    _clockTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _clockTicker?.cancel();
-    super.dispose();
-  }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -47,29 +35,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
     }
   }
 
-  /// Pide confirmación antes de reescribir los datos de ejemplo existentes.
-  Future<void> _confirmAndSeed() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('¿Restaurar datos de ejemplo?'),
-        content: const Text(
-          'Se reescribirán todos los partidos, equipos y torneos de ejemplo, '
-          'y su marcador volverá a 0-0. Esta acción no se puede deshacer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Restaurar'),
-          ),
-        ],
+  void _openManage() {
+    final repo = _repo;
+    if (repo == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ManageMatchesScreen(repository: repo),
       ),
     );
-    if (confirmed == true) await _seed();
   }
 
   Future<void> _seed() async {
@@ -78,17 +51,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
       await _repo!.seedSampleData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Datos de ejemplo restaurados'),
-            duration: Duration(seconds: 2),
+          glassSnackBar(
+            'Datos de ejemplo restaurados',
+            duration: const Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo actualizar el partido: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(glassSnackBar('No se pudo actualizar el partido: $e'));
       }
     } finally {
       if (mounted) setState(() => _seeding = false);
@@ -112,30 +85,21 @@ class _MatchesScreenState extends State<MatchesScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 20,
-        title: const Row(
-          children: [
-            Icon(Icons.sports_volleyball, size: 22),
-            SizedBox(width: 10),
-            Text('SetPoint'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Restaurar partido de ejemplo en Firestore',
-            onPressed: _seeding ? null : _confirmAndSeed,
-            icon: _seeding
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: sp.onHeader,
-                    ),
-                  )
-                : const Icon(Icons.restart_alt_rounded),
+        // Tocar el logo abre la administración de partidos (crear, borrar,
+        // restaurar ejemplos). Acceso discreto a propósito: no añade botones
+        // a la pantalla principal.
+        title: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _openManage,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sports_volleyball, size: 22),
+              SizedBox(width: 10),
+              Text('SetPoint'),
+            ],
           ),
-          const SizedBox(width: 6),
-        ],
+        ),
       ),
       body: StreamBuilder<List<MatchModel>>(
         stream: _stream,
@@ -144,7 +108,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
             return _Message(
               icon: Icons.cloud_off_rounded,
               title: 'No se pudo leer la base de datos',
-              body: 'Revisa tu conexión y que las reglas de Firestore '
+              body:
+                  'Revisa tu conexión y que las reglas de Firestore '
                   'permitan leer las colecciones matches, teams y tournaments.\n\n'
                   '${snap.error}',
             );
@@ -167,14 +132,13 @@ class _MatchesScreenState extends State<MatchesScreen> {
             return _Message(
               icon: Icons.sports_volleyball_outlined,
               title: 'Aún no hay partidos',
-              body: 'Crea el partido de ejemplo para empezar. Después podrás '
+              body:
+                  'Crea el partido de ejemplo para empezar. Después podrás '
                   'editar equipos, torneo y marcador desde la consola de '
                   'Firebase o desde la app.',
               action: FilledButton(
                 onPressed: _seeding ? null : _seed,
-                child: Text(
-                  _seeding ? 'Creando…' : 'Crear partido de ejemplo',
-                ),
+                child: Text(_seeding ? 'Creando…' : 'Crear partido de ejemplo'),
               ),
             );
           }
@@ -199,7 +163,12 @@ class _MatchesScreenState extends State<MatchesScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  14,
+                  12,
+                  24 + MediaQuery.paddingOf(context).bottom,
+                ),
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -226,8 +195,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
                           _ => 'Todavía no hay partidos finalizados.',
                         },
                         textAlign: TextAlign.center,
-                        style: context.type.bodyMedium
-                            ?.copyWith(color: sp.muted),
+                        style: context.type.bodyMedium?.copyWith(
+                          color: sp.muted,
+                        ),
                       ),
                     ),
                   for (final g in groups.values) ...[
@@ -253,7 +223,9 @@ class _TournamentBlock extends StatelessWidget {
   static List<SetStatsData> _playedSetsFor(MatchModel m) {
     return m.setsHistory
         .where(
-          (s) => s.isCompleted || (!m.isMatchFinished && s.setNumber == m.currentSet),
+          (s) =>
+              s.isCompleted ||
+              (!m.isMatchFinished && s.setNumber == m.currentSet),
         )
         .toList();
   }
@@ -287,8 +259,11 @@ class _TournamentBlock extends StatelessWidget {
                     color: sp.raised,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.emoji_events_outlined,
-                      size: 16, color: sp.muted),
+                  child: Icon(
+                    Icons.emoji_events_outlined,
+                    size: 16,
+                    color: sp.muted,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -298,9 +273,10 @@ class _TournamentBlock extends StatelessWidget {
                       Text(t.name, style: context.type.titleSmall),
                       if (t.category.isNotEmpty || t.season.isNotEmpty)
                         Text(
-                          [t.category, t.season]
-                              .where((s) => s.isNotEmpty)
-                              .join(', '),
+                          [
+                            t.category,
+                            t.season,
+                          ].where((s) => s.isNotEmpty).join(', '),
                           style: context.type.labelSmall,
                         ),
                     ],
@@ -349,7 +325,7 @@ class _MatchRow extends StatelessWidget {
     final m = match;
     final playedSets = _TournamentBlock._playedSetsFor(m);
 
-    final statusText = switch (m.status) {
+    String statusText() => switch (m.status) {
       MatchStatus.upcoming => 'Por empezar',
       MatchStatus.live =>
         '${m.currentSet}.º · ${formatDurationSeconds(m.currentSetElapsedSeconds)}',
@@ -393,14 +369,17 @@ class _MatchRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          statusText,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: kTabular,
+                        LiveClock(
+                          enabled: m.isTimerRunning,
+                          builder: (_) => Text(
+                            statusText(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: kTabular,
+                            ),
                           ),
                         ),
                       ],
@@ -467,11 +446,7 @@ class _MatchRow extends StatelessWidget {
 
     return Row(
       children: [
-        TeamCrest(
-          shortName: team.shortName,
-          color: Color(team.colorValue),
-          size: 20,
-        ),
+        CrestHero(matchId: m.id, isLocal: isLocal, team: team, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Row(
@@ -523,14 +498,14 @@ class _MatchRow extends StatelessWidget {
                       color: upcoming
                           ? sp.faint
                           : (!playedSets[i].isCompleted
-                              ? sp.live
-                              : ((isLocal
-                                      ? playedSets[i].localScore >
-                                          playedSets[i].visitScore
-                                      : playedSets[i].visitScore >
-                                          playedSets[i].localScore)
-                                  ? sp.ink
-                                  : sp.faint)),
+                                ? sp.live
+                                : ((isLocal
+                                          ? playedSets[i].localScore >
+                                                playedSets[i].visitScore
+                                          : playedSets[i].visitScore >
+                                                playedSets[i].localScore)
+                                      ? sp.ink
+                                      : sp.faint)),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       fontFeatures: kTabular,
@@ -569,19 +544,18 @@ class _Message extends StatelessWidget {
             children: [
               Icon(icon, size: 40, color: sp.faint),
               const SizedBox(height: 14),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: context.type.headlineSmall),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: context.type.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text(
                 body,
                 textAlign: TextAlign.center,
                 style: context.type.bodyMedium?.copyWith(color: sp.muted),
               ),
-              if (action != null) ...[
-                const SizedBox(height: 20),
-                action!,
-              ],
+              if (action != null) ...[const SizedBox(height: 20), action!],
             ],
           ),
         ),

@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/glass_widgets.dart';
 import '../../core/widgets/sp_widgets.dart';
 import 'training_progress_store.dart';
 
@@ -26,16 +27,23 @@ class TrainingDrill {
   });
 }
 
-class TrainingScreen extends StatefulWidget {
+/// Pestaña "Ejercicios": lista de ejercicios del día con su progreso y el
+/// temporizador de descanso entre series.
+class ExercisesView extends StatefulWidget {
   final TrainingProgressStore store;
 
-  const TrainingScreen({super.key, this.store = const TrainingProgressStore()});
+  const ExercisesView({super.key, this.store = const TrainingProgressStore()});
 
   @override
-  State<TrainingScreen> createState() => _TrainingScreenState();
+  State<ExercisesView> createState() => _ExercisesViewState();
 }
 
-class _TrainingScreenState extends State<TrainingScreen> {
+class _ExercisesViewState extends State<ExercisesView>
+    with AutomaticKeepAliveClientMixin {
+  // Conserva el temporizador al cambiar a la pestaña "Agenda".
+  @override
+  bool get wantKeepAlive => true;
+
   static const List<String> _categories = [
     'Todos',
     'Saque',
@@ -179,9 +187,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         timer.cancel();
         setState(() => _isRunning = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Descanso terminado. Listo para la siguiente serie.'),
-            duration: Duration(seconds: 2),
+          glassSnackBar(
+            'Descanso terminado. Listo para la siguiente serie.',
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -219,41 +227,40 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final int completedCount = _drills.where((d) => d.isCompleted).length;
     final int totalCount = _drills.length;
-    final double progress =
-        totalCount == 0 ? 0.0 : completedCount / totalCount;
+    final double progress = totalCount == 0 ? 0.0 : completedCount / totalCount;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 20,
-        title: const Text('Entrenamiento'),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 28),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: PillTabs(
-                  labels: _categories,
-                  selected: _selectedCategoryIndex,
-                  onChanged: (i) => setState(() => _selectedCategoryIndex = i),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildProgressAndTimerRow(
-                context,
-                completedCount: completedCount,
-                totalCount: totalCount,
-                progress: progress,
-              ),
-              const SizedBox(height: 12),
-              _buildDrillsCard(context),
-            ],
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            12,
+            14,
+            12,
+            28 + MediaQuery.paddingOf(context).bottom,
           ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: PillTabs(
+                labels: _categories,
+                selected: _selectedCategoryIndex,
+                onChanged: (i) => setState(() => _selectedCategoryIndex = i),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildProgressAndTimerRow(
+              context,
+              completedCount: completedCount,
+              totalCount: totalCount,
+              progress: progress,
+            ),
+            const SizedBox(height: 12),
+            _buildDrillsCard(context),
+          ],
         ),
       ),
     );

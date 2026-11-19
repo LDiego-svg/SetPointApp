@@ -26,17 +26,49 @@ class InMemoryMatchRepository implements MatchRepository {
 
   @override
   Stream<MatchModel?> watchMatch(String id) => _watch(() {
-        for (final m in _build()) {
-          if (m.id == id) return m;
-        }
-        return null;
-      });
+    for (final m in _build()) {
+      if (m.id == id) return m;
+    }
+    return null;
+  });
 
   @override
   Future<void> saveMatchState(MatchModel match) async {
     final doc = matches[match.id];
     if (doc == null) throw StateError('El partido ${match.id} no existe');
     doc.addAll(match.toStateMap());
+    _changes.add(null);
+  }
+
+  @override
+  Future<List<TeamInfo>> loadTeams() async =>
+      [for (final e in teams.entries) TeamInfo.fromMap(e.key, e.value)]
+        ..sort((a, b) => a.name.compareTo(b.name));
+
+  @override
+  Future<List<TournamentInfo>> loadTournaments() async => [
+    for (final e in tournaments.entries) TournamentInfo.fromMap(e.key, e.value),
+  ]..sort((a, b) => a.name.compareTo(b.name));
+
+  @override
+  Future<void> createMatch(
+    MatchModel match, {
+    List<TeamInfo> newTeams = const [],
+    TournamentInfo? newTournament,
+  }) async {
+    if (newTournament != null) {
+      tournaments[newTournament.id] = newTournament.toMap();
+    }
+    for (final team in newTeams) {
+      teams[team.id] = team.toMap();
+    }
+    matches[match.id] = match.toMap();
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> deleteMatch(String id) async {
+    matches.remove(id);
     _changes.add(null);
   }
 

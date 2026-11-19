@@ -18,6 +18,23 @@ abstract class MatchRepository {
 
   /// Crea el torneo, los dos equipos y el partido de ejemplo.
   Future<void> seedSampleData();
+
+  /// Equipos existentes, para elegirlos al crear un partido.
+  Future<List<TeamInfo>> loadTeams();
+
+  /// Torneos existentes, para elegirlos al crear un partido.
+  Future<List<TournamentInfo>> loadTournaments();
+
+  /// Crea un partido nuevo. [newTeams] y [newTournament] son los que se
+  /// dieron de alta en el formulario; los existentes no se reescriben.
+  Future<void> createMatch(
+    MatchModel match, {
+    List<TeamInfo> newTeams = const [],
+    TournamentInfo? newTournament,
+  });
+
+  /// Borra un partido. Sus equipos y torneo se conservan.
+  Future<void> deleteMatch(String id);
 }
 
 /// Combina los mapas crudos de las tres colecciones en modelos.
@@ -86,21 +103,27 @@ Stream<R> combineLatest3<A, B, C, R>(
   controller = StreamController<R>(
     onListen: () {
       subs
-        ..add(a.listen((v) {
-          va = v;
-          ha = true;
-          emit();
-        }, onError: controller.addError))
-        ..add(b.listen((v) {
-          vb = v;
-          hb = true;
-          emit();
-        }, onError: controller.addError))
-        ..add(c.listen((v) {
-          vc = v;
-          hc = true;
-          emit();
-        }, onError: controller.addError));
+        ..add(
+          a.listen((v) {
+            va = v;
+            ha = true;
+            emit();
+          }, onError: controller.addError),
+        )
+        ..add(
+          b.listen((v) {
+            vb = v;
+            hb = true;
+            emit();
+          }, onError: controller.addError),
+        )
+        ..add(
+          c.listen((v) {
+            vc = v;
+            hc = true;
+            emit();
+          }, onError: controller.addError),
+        );
     },
     onCancel: () async {
       for (final s in subs) {

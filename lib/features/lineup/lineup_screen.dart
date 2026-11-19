@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/sp_widgets.dart';
@@ -35,7 +35,12 @@ class _LineupScreenState extends State<LineupScreen>
 
     return ListView(
       primary: true,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        28 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         Center(
           child: ConstrainedBox(
@@ -110,11 +115,10 @@ class _LineupScreenState extends State<LineupScreen>
               padding: const EdgeInsets.symmetric(vertical: 7),
               decoration: BoxDecoration(
                 color: sp.brand.withValues(alpha: 0.08),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
-                border: Border(
-                  bottom: BorderSide(color: sp.brand, width: 2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
                 ),
+                border: Border(bottom: BorderSide(color: sp.brand, width: 2)),
               ),
               child: Text(
                 'Red · Delanteros (zonas 4, 3, 2)',
@@ -180,7 +184,10 @@ class _LineupScreenState extends State<LineupScreen>
 
     return SectionCard(
       title: 'Jugadores en cancha',
-      trailing: Text('${sorted.length} titulares', style: context.type.labelMedium),
+      trailing: Text(
+        '${sorted.length} titulares',
+        style: context.type.labelMedium,
+      ),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Column(
         children: [
@@ -226,8 +233,10 @@ class _LineupScreenState extends State<LineupScreen>
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: sorted[i].zone == 1
                           ? sp.brand.withValues(alpha: 0.12)
@@ -271,8 +280,8 @@ class _CourtSpot extends StatelessWidget {
     final sp = context.sp;
     final onColor =
         ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-            ? Colors.white
-            : const Color(0xFF15161A);
+        ? Colors.white
+        : const Color(0xFF15161A);
 
     return SizedBox(
       width: 92,

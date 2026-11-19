@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../matches/matches_screen.dart';
 import '../training/training_screen.dart';
+import 'glass_nav_bar.dart';
 
 /// Navegación principal: Partidos y Entrenamiento.
 class HomeShell extends StatefulWidget {
@@ -17,14 +18,13 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // El contenido pasa por detrás de la barra de vidrio.
+      extendBody: true,
       body: IndexedStack(
         index: _index,
-        children: const [
-          MatchesScreen(),
-          TrainingScreen(),
-        ],
+        children: const [MatchesScreen(), TrainingScreen()],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: GlassNavBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [

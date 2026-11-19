@@ -1,5 +1,5 @@
 name: set_point
-description: "A new Flutter project."
+description: "SetPoint: marcador de voleibol en tiempo real, estadísticas y agenda de entrenamiento."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -38,6 +38,7 @@ dependencies:
   cloud_firestore: ^7.1.0
   google_fonts: ^9.0.0
   shared_preferences: ^2.5.6
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
