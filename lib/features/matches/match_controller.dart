@@ -6,29 +6,11 @@ import 'package:flutter/foundation.dart';
 import '../../data/match_repository.dart';
 import '../../models/match_model.dart';
 
-/// Mantiene un partido sincronizado con la base de datos en tiempo real.
-///
-/// Cada acción se aplica primero en local (respuesta instantánea) y después
-/// se guarda en Firestore. Los cambios hechos desde otro dispositivo o desde
-/// la consola de Firebase llegan por el stream y se aplican sin perder la
-/// pila de "deshacer".
-///
-/// Control de concurrencia ligero (sin transacciones, funciona sin conexión):
-/// cada guardado incrementa `rev` y firma con [sessionId]. Mientras hay
-/// guardados en curso se ignoran los datos remotos con `rev` menor (son
-/// anteriores al estado local). Si llega un `rev` igual al último que
-/// guardamos pero firmado por otra sesión, otro dispositivo escribió a la vez:
-/// se adopta su versión y se avisa.
-///
-/// La pila de "deshacer" se conserva en memoria al salir de la pantalla y se
-/// recupera al volver, salvo que el partido haya cambiado desde otra sesión.
-/// No sobrevive a cerrar la app.
 class MatchController extends ChangeNotifier {
-  /// Identifica esta ejecución de la app en el campo `updatedBy`.
   static final String sessionId =
       '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
 
-  /// Pilas de deshacer de los partidos cerrados, con la `rev` que tenían.
+  // Conserva el historial de deshacer en memoria al salir de la pantalla.
   static final Map<String, ({int rev, List<MatchSnapshot> history})>
   _savedUndo = {};
 
@@ -39,8 +21,6 @@ class MatchController extends ChangeNotifier {
   bool loading = true;
   bool notFound = false;
   Object? error;
-
-  /// Último error al guardar; la UI lo muestra y lo limpia.
   String? saveError;
 
   StreamSubscription<MatchModel?>? _sub;
@@ -93,8 +73,7 @@ class MatchController extends ChangeNotifier {
         );
   }
 
-  /// Recupera la pila conservada solo si nuestro último guardado sigue siendo
-  /// el estado actual; si no, deshacer pisaría cambios de otra sesión.
+  // Solo restaura si nadie más modificó el partido desde otra sesión.
   void _restoreUndo(MatchModel m) {
     final saved = _savedUndo.remove(matchId);
     if (saved != null && saved.rev == m.rev && m.updatedBy == sessionId) {
@@ -134,6 +113,14 @@ class MatchController extends ChangeNotifier {
     final m = match;
     if (m == null || !m.isUpcoming) return;
     m.startMatch();
+    notifyListeners();
+    _persist();
+  }
+
+  void changeBestOf(int value) {
+    final m = match;
+    if (m == null || m.bestOf == value) return;
+    m.changeBestOf(value);
     notifyListeners();
     _persist();
   }
@@ -231,8 +218,6 @@ class MatchController extends ChangeNotifier {
     await _persist();
   }
 
-  /// Reinicia solo este partido a 0-0 "Por empezar". Devuelve `false` si no
-  /// se pudo guardar (el error queda en [saveError]).
   Future<bool> resetMatch() async {
     final m = match;
     if (m == null) return false;

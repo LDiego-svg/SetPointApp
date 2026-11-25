@@ -6,7 +6,6 @@ import 'package:set_point/data/match_repository.dart';
 import 'package:set_point/features/matches/match_controller.dart';
 import 'package:set_point/models/match_model.dart';
 
-/// Repositorio cuyo guardado no termina hasta que el test lo libera.
 class _SlowRepository extends InMemoryMatchRepository {
   Completer<void>? gate;
 
@@ -70,7 +69,6 @@ void main() {
       await pumpEventQueue();
       c.dispose();
 
-      // Igual que la lista: abre con el partido que ya tiene cargado.
       final reopened = MatchController(
         repository: repo,
         matchId: 'partido_demo',
@@ -201,7 +199,6 @@ void main() {
       c.addPoint(true, PointActionType.attack);
       expect(c.match!.localPoints, 1);
 
-      // Llega un estado anterior (rev 0) antes de que termine el guardado.
       await repo.seedSampleData();
       await pumpEventQueue();
       expect(c.match!.localPoints, 1);
@@ -225,7 +222,6 @@ void main() {
       await pumpEventQueue();
       expect(c.saveError, isNull);
 
-      // Otro dispositivo partió del mismo estado y guardó la misma versión.
       final remote = _readFromRepo(repo, 'partido_demo')
         ..localPoints = 0
         ..visitPoints = 1

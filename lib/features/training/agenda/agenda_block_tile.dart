@@ -4,9 +4,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sp_widgets.dart';
 import 'schedule_models.dart';
 
-/// Una actividad en la línea de tiempo: hora a la izquierda, punto y línea
-/// del color de la actividad, y la tarjeta. La actividad en curso se resalta
-/// con "Ahora" y una barra de progreso; la siguiente lleva "Siguiente".
 class AgendaBlockTile extends StatelessWidget {
   final ScheduleBlock block;
   final bool isNow;
@@ -59,7 +56,6 @@ class AgendaBlockTile extends StatelessWidget {
               ),
             ),
           ),
-          // Punto y línea de la línea de tiempo.
           SizedBox(
             width: 18,
             child: Column(

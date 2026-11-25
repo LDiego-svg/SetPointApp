@@ -4,15 +4,6 @@ import '../models/match_model.dart';
 import 'match_repository.dart';
 import 'seed_data.dart';
 
-/// Implementación en Cloud Firestore.
-///
-/// Estructura en tiempo real:
-///   tournaments/{id}  → name, category, season
-///   teams/{id}        → name, shortName, color ("#RRGGBB"), players[]
-///   matches/{id}      → localName, visitName, tournament, stage, venue,
-///                       currentSet, localSets, visitSets, localPoints,
-///                       visitPoints, isLocalServing, isFinished, recentEvent,
-///                       sets[], events[], localLineup[], visitLineup[]
 class FirestoreMatchRepository implements MatchRepository {
   final FirebaseFirestore _db;
 

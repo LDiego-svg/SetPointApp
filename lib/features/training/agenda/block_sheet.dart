@@ -3,11 +3,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import 'schedule_models.dart';
 
-/// Resultado de la hoja: actividades a guardar (una por día elegido) o borrar.
 typedef BlockSheetResult = ({List<ScheduleBlock> save, bool delete});
 
-/// Hoja para agregar o editar una actividad. Al agregar se pueden elegir
-/// varios días y se crea una copia en cada uno.
 Future<BlockSheetResult?> showBlockSheet(
   BuildContext context, {
   ScheduleBlock? initial,
@@ -61,7 +58,6 @@ class _BlockSheetState extends State<_BlockSheet> {
       if (start) {
         final length = _end - _start;
         _start = minutes;
-        // Conserva la duración al mover la hora de inicio.
         if (_end <= _start) _end = (_start + length).clamp(1, 24 * 60);
       } else {
         _end = minutes;

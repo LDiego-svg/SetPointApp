@@ -4,8 +4,6 @@ import '../models/match_model.dart';
 import 'match_repository.dart';
 import 'seed_data.dart';
 
-/// Repositorio en memoria con el mismo formato de documentos que Firestore.
-/// Se usa en pruebas y como referencia del esquema.
 class InMemoryMatchRepository implements MatchRepository {
   final Map<String, Map<String, dynamic>> matches = {};
   final Map<String, Map<String, dynamic>> teams = {};

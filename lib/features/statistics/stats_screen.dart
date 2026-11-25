@@ -29,8 +29,6 @@ class _StatsScreenState extends State<StatsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    // Solo aparecen los sets jugados o en juego. Si el set elegido deja de
-    // existir (p. ej. tras deshacer o reiniciar), se vuelve al partido.
     final playedSets = _match.playedSetsCount;
     if (_selectedFilterIndex > playedSets) _selectedFilterIndex = 0;
     final setChips = [
@@ -80,7 +78,6 @@ class _StatsScreenState extends State<StatsScreen>
   Color get _homeColor => Color(_match.localTeam.colorValue);
   Color get _awayColor => Color(_match.visitTeam.colorValue);
 
-  // 1. MOMENTUM PUNTO A PUNTO
   Widget _buildMomentumCard(SetStatsData stats) {
     final sp = context.sp;
     final nodes = stats.timeline;
@@ -131,7 +128,6 @@ class _StatsScreenState extends State<StatsScreen>
     );
   }
 
-  // 2. COMPARATIVA ESTILO SOFASCORE
   Widget _buildComparativeStatsCard(SetStatsData stats) {
     int durationSecs() => _selectedFilterIndex == 0
         ? _match.totalMatchElapsedSeconds
@@ -266,7 +262,6 @@ class _StatsScreenState extends State<StatsScreen>
     );
   }
 
-  // 3. RACHAS
   Widget _buildStreaksCard(SetStatsData stats) {
     final sp = context.sp;
     final nodes = stats.timeline;
@@ -410,7 +405,6 @@ class _StatsScreenState extends State<StatsScreen>
       );
     }
 
-    // Las más largas primero.
     runs.sort((a, b) => b.length.compareTo(a.length));
 
     return _StreakSummary(
@@ -421,8 +415,6 @@ class _StatsScreenState extends State<StatsScreen>
   }
 }
 
-/// Barras de momentum: cada punto aporta +1 (local) o -1 (visitante) y se
-/// promedia con una ventana móvil, como el "attack momentum" de Sofascore.
 class _MomentumPainter extends CustomPainter {
   final List<RallyPointNode> nodes;
   final Color home;
@@ -451,7 +443,6 @@ class _MomentumPainter extends CustomPainter {
     final gap = slot > 4 ? math.min(2.0, slot * 0.25) : 0.0;
     final maxH = mid - 2;
 
-    // Eje central.
     canvas.drawLine(
       Offset(0, mid),
       Offset(size.width, mid),

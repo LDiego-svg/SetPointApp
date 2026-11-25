@@ -21,7 +21,6 @@ IconData iconForAction(PointActionType action) {
   }
 }
 
-/// Pestaña "Detalles": registro de puntos, marcador por sets y jugada a jugada.
 class ScoreboardScreen extends StatelessWidget {
   final MatchController controller;
 
@@ -41,7 +40,6 @@ class ScoreboardScreen extends StatelessWidget {
     final endedSetDuration = formatDurationSeconds(
       _match.setsHistory[previousSet - 1].durationSeconds,
     );
-    // Vibración proporcional a lo que pasó: punto, fin de set o de partido.
     if (_match.isMatchFinished) {
       HapticFeedback.heavyImpact();
     } else if (_match.currentSet != previousSet) {
@@ -103,7 +101,6 @@ class ScoreboardScreen extends StatelessWidget {
     );
   }
 
-  // 1. REGISTRO DE PUNTOS + RELOJ DE SET + DESHACER
   Widget _buildScoringCard(BuildContext context) {
     final sp = context.sp;
     final m = _match;
@@ -249,11 +246,9 @@ class ScoreboardScreen extends StatelessWidget {
     );
   }
 
-  // 2. MARCADOR POR SETS + DURACIÓN POR SET
   Widget _buildSetsTable(BuildContext context) {
     final sp = context.sp;
     final m = _match;
-    // Solo los sets jugados; antes de empezar se muestra el 1.º vacío.
     final visibleSets = m.playedSetsCount < 1 ? 1 : m.playedSetsCount;
     final head = TextStyle(
       color: sp.faint,
@@ -405,6 +400,40 @@ class ScoreboardScreen extends StatelessWidget {
 
     return SectionCard(
       title: 'Marcador por sets',
+      trailing: PopupMenuButton<int>(
+        tooltip: 'Formato del partido',
+        initialValue: m.bestOf,
+        onSelected: controller.changeBestOf,
+        enabled: !m.isMatchFinished,
+        itemBuilder: (_) => const [
+          PopupMenuItem(
+            value: 3,
+            child: Text('A 3 sets (gana quien llegue a 2)'),
+          ),
+          PopupMenuItem(
+            value: 5,
+            child: Text('A 5 sets (gana quien llegue a 3)'),
+          ),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'A ${m.bestOf} sets',
+                style: TextStyle(
+                  color: sp.brand,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              if (!m.isMatchFinished)
+                Icon(Icons.arrow_drop_down_rounded, color: sp.brand),
+            ],
+          ),
+        ),
+      ),
       child: Column(
         children: [
           Row(
@@ -438,7 +467,6 @@ class ScoreboardScreen extends StatelessWidget {
     );
   }
 
-  // 3. JUGADA A JUGADA
   Widget _buildPointByPoint(BuildContext context) {
     final sp = context.sp;
     final m = _match;
@@ -487,7 +515,6 @@ class ScoreboardScreen extends StatelessWidget {
     return '$dd/$mm/$yyyy  •  $h:$m $period';
   }
 
-  // 4. DETALLES DEL PARTIDO (FECHA, SEDE, COMPETICIÓN ESTILO SOFASCORE)
   Widget _buildMatchInfoCard(BuildContext context) {
     final sp = context.sp;
     final m = _match;

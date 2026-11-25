@@ -11,9 +11,6 @@ import 'sample_schedule.dart';
 import 'schedule_models.dart';
 import 'schedule_store.dart';
 
-/// Pestaña "Agenda": la rutina semanal de una persona (entrenamientos,
-/// psicólogo, físico…). Se guarda solo en el teléfono. El botón "Cambiar"
-/// muestra la agenda de otra persona.
 class AgendaView extends StatefulWidget {
   final ScheduleStore store;
   const AgendaView({super.key, this.store = const ScheduleStore()});
@@ -30,8 +27,6 @@ class _AgendaViewState extends State<AgendaView>
   List<Athlete>? _athletes;
   String? _selectedId;
   int _day = DateTime.now().weekday;
-
-  /// Refresca "Ahora" / "Siguiente" cada minuto.
   Timer? _minuteTicker;
 
   @override
@@ -145,7 +140,6 @@ class _AgendaViewState extends State<AgendaView>
               onChanged: (d) => setState(() => _day = d),
             ),
             const SizedBox(height: 12),
-            // Al cambiar de persona o de día, la agenda entra con un fundido.
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 260),
               switchInCurve: Curves.easeOutCubic,
@@ -220,7 +214,6 @@ class _PersonCard extends StatelessWidget {
   }
 }
 
-/// Días de la semana actual. Un punto marca los días con actividades.
 class _WeekStrip extends StatelessWidget {
   final int selected;
   final Athlete? person;

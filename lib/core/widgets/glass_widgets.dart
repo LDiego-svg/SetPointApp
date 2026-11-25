@@ -6,18 +6,9 @@ import 'package:material_ui/material_ui.dart';
 import '../theme/app_theme.dart';
 import 'sp_widgets.dart';
 
-/// Cristal al estilo iOS: cuerpo casi transparente con un tinte leve de la
-/// marca, brillo superior, brillo especular en el borde (más intenso arriba a
-/// la izquierda y abajo a la derecha) y una sombra suave.
-///
-/// Con [backdrop] además desenfoca y satura lo que pasa por detrás. Cuesta un
-/// desenfoque por fotograma, así que solo tiene sentido cuando detrás se
-/// mueve contenido; sobre un fondo liso se ve igual sin él.
 class GlassLens extends StatelessWidget {
   final BorderRadius borderRadius;
   final bool backdrop;
-
-  /// Relleno del cuerpo. Por defecto, `lensFill` con el tinte `lensTint`.
   final Color? fill;
   final double shadowBlur;
   final Widget? child;
@@ -31,8 +22,7 @@ class GlassLens extends StatelessWidget {
     this.child,
   });
 
-  /// Saturación ×1.8 del fondo: los colores de detrás se ven más vivos a
-  /// través del cristal, como en iOS.
+  // Matriz de saturación x1.8
   static const _saturate = ColorFilter.matrix([
     1.5662, -0.5148, -0.0514, 0, 0, //
     -0.1838, 1.2552, -0.0714, 0, 0, //
@@ -52,8 +42,6 @@ class GlassLens extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         border: Border.all(color: sp.lensBorder, width: 0.5),
-        // Volumen: la luz entra suave por arriba y rebota un poco abajo, en
-        // vez de un brillo plano que lo haría parecer una calcomanía.
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -82,7 +70,6 @@ class GlassLens extends StatelessWidget {
       );
     }
     if (shadowBlur <= 0) return glass;
-    // Sombra difusa y ligera: lo justo para que flote.
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
@@ -99,8 +86,6 @@ class GlassLens extends StatelessWidget {
   }
 }
 
-/// Borde especular: un trazo fino y algo difuso cuya intensidad varía en
-/// diagonal. Difuminado para que se lea como luz y no como un contorno.
 class _RimPainter extends CustomPainter {
   final Color color;
   final BorderRadius borderRadius;
@@ -134,14 +119,10 @@ class _RimPainter extends CustomPainter {
       old.color != color || old.borderRadius != borderRadius;
 }
 
-/// Botón circular de cristal para las barras superiores, como los de iOS 26.
-/// Detrás hay un color liso, así que no desenfoca.
 class GlassIconButton extends StatelessWidget {
   final IconData? icon;
   final String tooltip;
   final VoidCallback? onPressed;
-
-  /// Sustituye al icono (p. ej. un indicador de progreso).
   final Widget? child;
 
   const GlassIconButton({
@@ -157,8 +138,7 @@ class GlassIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sp = context.sp;
-    // Center: las acciones del AppBar estiran a sus hijos en alto; así el
-    // botón conserva su forma circular.
+    // Evita que AppBar.actions estire el botón en vertical.
     return Center(
       child: Tooltip(
         message: tooltip,
@@ -178,7 +158,6 @@ class GlassIconButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(_size / 2),
                   backdrop: false,
                   fill: sp.onHeader.withValues(alpha: 0.12),
-                  // Sin sombra: sobre un color liso parecería recortado.
                   shadowBlur: 0,
                   child: Center(
                     child: child ?? Icon(icon, size: 21, color: sp.onHeader),
@@ -193,11 +172,6 @@ class GlassIconButton extends StatelessWidget {
   }
 }
 
-/// Selector de pestañas segmentado con una lente de cristal que sigue al
-/// dedo: al deslizar entre pestañas se mueve 1:1 con el gesto (lee la
-/// animación del `TabController`) y se estira como una gota mientras viaja.
-///
-/// Usa el `DefaultTabController` más cercano y los colores de `tabBarTheme`.
 class GlassTabBar extends StatelessWidget {
   final List<String> labels;
 
@@ -289,8 +263,6 @@ class GlassTabBar extends StatelessWidget {
   }
 }
 
-/// Aviso flotante de cristal. Flota sobre el contenido, así que sí desenfoca
-/// lo que tiene detrás.
 SnackBar glassSnackBar(
   String message, {
   Duration duration = const Duration(seconds: 4),
@@ -315,7 +287,6 @@ class _GlassSnackContent extends StatelessWidget {
     final sp = context.sp;
     return GlassLens(
       borderRadius: BorderRadius.circular(16),
-      // Más opaco que la lente de navegación: aquí hay que leer un texto.
       fill: sp.glassFill,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

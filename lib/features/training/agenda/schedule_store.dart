@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'sample_schedule.dart';
 import 'schedule_models.dart';
 
-/// Guarda las agendas en el teléfono (versión básica, sin Firebase).
-/// La primera vez carga las personas de ejemplo.
 class ScheduleStore {
   static const _athletesKey = 'training.schedule.athletes.v1';
   static const _selectedKey = 'training.schedule.selected';

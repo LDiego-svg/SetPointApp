@@ -24,12 +24,10 @@ void main() {
     await tester.pumpWidget(SetPointApp(repository: repo));
     await tester.pumpAndSettle();
 
-    // Empty database state invites user to seed the sample match
     expect(find.text('Aún no hay partidos'), findsOneWidget);
     await tester.tap(find.text('Crear partido de ejemplo'));
     await tester.pumpAndSettle();
 
-    // Verify MatchesScreen renders tournament, teams, and "Por empezar" state
     expect(find.text('Liga Universitaria de Voleibol'), findsOneWidget);
     expect(find.text('Tigres UANL'), findsOneWidget);
     expect(find.text('Borregos MTY'), findsOneWidget);
@@ -38,31 +36,26 @@ void main() {
     expect(find.text('Por empezar 2'), findsOneWidget);
     expect(find.text('Por empezar'), findsWidgets);
 
-    // Tap the match row to open MatchDetailScreen
     await tester.tap(find.text('Tigres UANL'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    // Verify tabs and "Partido por empezar" banner are present
     expect(find.text('Detalles'), findsOneWidget);
     expect(find.text('Estadísticas'), findsOneWidget);
     expect(find.text('Alineación'), findsOneWidget);
     expect(find.text('Partido por empezar'), findsOneWidget);
     expect(find.text('Iniciar partido'), findsOneWidget);
 
-    // Start the match and verify it transitions to live with running timer
     await tester.tap(find.text('Iniciar partido'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(repo.matches['partido_demo']!['status'], 'live');
     expect(find.text('1.º set'), findsOneWidget);
 
-    // Score a point for local team and verify repository updated
     expect(repo.matches['partido_demo']!['localPoints'], 0);
     await tester.tap(find.text('Ataque').first);
     await tester.pump(const Duration(milliseconds: 300));
     expect(repo.matches['partido_demo']!['localPoints'], 1);
 
-    // Undo restores the point in repository
     await tester.tap(find.text('Deshacer'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(repo.matches['partido_demo']!['localPoints'], 0);
@@ -106,7 +99,6 @@ void main() {
     match.startMatch(DateTime.now().subtract(const Duration(minutes: 22)));
     expect(match.status, MatchStatus.live);
 
-    // Local wins the set (25-20)
     match.addPoint(isLocal: true, actionType: PointActionType.attack);
 
     expect(match.localSetsWon, 1);
@@ -175,7 +167,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1 de 8 · 13%'), findsOneWidget);
 
-    // Simula cerrar y abrir la app: se descarta el árbol y se reconstruye.
     await tester.pumpWidget(const SizedBox());
     await openTraining();
     expect(find.text('1 de 8 · 13%'), findsOneWidget);
@@ -290,11 +281,9 @@ void main() {
     expect(created.value['homeTeamId'], 'fime');
     expect(created.value['awayTeamId'], 'tigres-uanl');
     expect(created.value['stage'], 'Amistoso');
-    // De vuelta en la administración, con el partido nuevo en la lista.
     expect(find.text('Administrar partidos'), findsOneWidget);
     expect(find.text('FIME vs Tigres UANL'), findsOneWidget);
 
-    // Borrarlo pide confirmación.
     await tester.tap(find.byTooltip('Borrar partido').first);
     await tester.pumpAndSettle();
     expect(find.text('¿Borrar partido?'), findsOneWidget);
@@ -323,13 +312,11 @@ void main() {
       expect(find.text('Nuevo torneo'), findsOneWidget);
     }
 
-    // Cancelar.
     await openNewTournament();
     await tester.tap(find.text('Cancelar'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
 
-    // Agregar.
     await openNewTournament();
     await tester.enterText(find.byType(TextField).last, 'Copa FIME');
     await tester.tap(find.text('Agregar'));
@@ -361,9 +348,60 @@ void main() {
     expect(find.text('Carlos Ruiz'), findsOneWidget);
     expect(find.text('Opuesto · #7'), findsOneWidget);
 
-    // Al reabrir la app sigue en la misma persona.
     await tester.pumpWidget(const SizedBox());
     await openAgenda();
     expect(find.text('Carlos Ruiz'), findsOneWidget);
+  });
+
+  test('Best of 3: third set to 15 and match ends at 2 sets', () {
+    final match = MatchModel(
+      id: 'm3',
+      tournament: TournamentInfo.defaultTournament(),
+      stage: 'Final',
+      venue: 'Gimnasio',
+      startTime: DateTime(2026, 11, 19, 8, 30),
+      localTeam: const TeamInfo(
+        id: 'a',
+        name: 'Local',
+        shortName: 'LOC',
+        colorValue: 0xFF3449E8,
+      ),
+      visitTeam: const TeamInfo(
+        id: 'b',
+        name: 'Visita',
+        shortName: 'VIS',
+        colorValue: 0xFFE5243B,
+      ),
+      currentSet: 1,
+      localSetsWon: 0,
+      visitSetsWon: 0,
+      localPoints: 0,
+      visitPoints: 0,
+      isLocalServing: true,
+      isMatchStarted: false,
+      isMatchFinished: false,
+      setsHistory: [for (var i = 1; i <= 5; i++) SetStatsData(setNumber: i)],
+      events: [],
+      localLineup: const [],
+      visitLineup: const [],
+    );
+    match.startMatch(DateTime.now());
+
+    match.localPoints = 24;
+    match.addPoint(isLocal: true, actionType: PointActionType.attack);
+    match.changeBestOf(3);
+    expect(match.setsToWin, 2);
+
+    match.visitPoints = 24;
+    match.addPoint(isLocal: false, actionType: PointActionType.attack);
+    expect(match.currentSet, 3);
+    expect(match.targetPointsForCurrentSet, 15);
+
+    match.localPoints = 14;
+    match.visitPoints = 13;
+    match.addPoint(isLocal: true, actionType: PointActionType.attack);
+    expect(match.isMatchFinished, isTrue);
+    expect(match.localSetsWon, 2);
+    expect(match.playedSetsCount, 3);
   });
 }

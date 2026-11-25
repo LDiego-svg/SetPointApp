@@ -9,9 +9,6 @@ import '../../../models/match_model.dart';
 import 'ids.dart';
 import 'new_team_sheet.dart';
 
-/// Formulario para crear un partido "por empezar". Se abre tocando el logo
-/// de la lista de partidos. Los equipos y el torneo se eligen de los que ya
-/// existen o se dan de alta aquí mismo; todo se guarda al pulsar "Guardar".
 class NewMatchScreen extends StatefulWidget {
   final MatchRepository repository;
   const NewMatchScreen({super.key, required this.repository});
@@ -20,7 +17,6 @@ class NewMatchScreen extends StatefulWidget {
   State<NewMatchScreen> createState() => _NewMatchScreenState();
 }
 
-/// Valor especial de los desplegables para "dar de alta uno nuevo".
 const _newItem = '__nuevo__';
 
 class _NewMatchScreenState extends State<NewMatchScreen> {
@@ -39,8 +35,7 @@ class _NewMatchScreenState extends State<NewMatchScreen> {
   late DateTime _date = DateUtils.dateOnly(DateTime.now());
   TimeOfDay _time = TimeOfDay(hour: (DateTime.now().hour + 1) % 24, minute: 0);
 
-  /// Cambia al cerrar las altas: reconstruye los desplegables para que no
-  /// se queden mostrando "Nuevo…" si se canceló.
+  // Fuerza a reconstruir los dropdowns si se cancela el alta.
   int _rev = 0;
 
   Future<void> _load() async {
@@ -151,8 +146,7 @@ class _NewMatchScreenState extends State<NewMatchScreen> {
       startTime: start,
     );
 
-    // Sin conexión, Firestore guarda en local y confirma al reconectar: no
-    // esperamos a la confirmación para cerrar el formulario.
+    // No se espera a Firestore para no bloquear el cierre sin conexión.
     final messenger = ScaffoldMessenger.of(context);
     widget.repository
         .createMatch(
@@ -328,7 +322,6 @@ class _NewMatchScreenState extends State<NewMatchScreen> {
   Widget _teamField({required String label, required bool isLocal}) {
     final value = isLocal ? _localId : _visitId;
     return DropdownButtonFormField<String>(
-      // La clave fuerza a mostrar el equipo recién creado.
       key: ValueKey('$label-$value-$_rev'),
       initialValue: value,
       isExpanded: true,
@@ -362,9 +355,6 @@ class _NewMatchScreenState extends State<NewMatchScreen> {
   }
 }
 
-/// Pide el nombre de un torneo nuevo. El diálogo es dueño de su controlador
-/// y lo libera al desmontarse: si se liberara al cerrar, la animación de
-/// salida aún lo estaría usando.
 class _NewTournamentDialog extends StatefulWidget {
   const _NewTournamentDialog();
 

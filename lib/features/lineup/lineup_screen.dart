@@ -5,8 +5,6 @@ import '../../core/widgets/sp_widgets.dart';
 import '../../models/match_model.dart';
 import '../matches/match_controller.dart';
 
-/// Pestaña "Alineación": media cancha interactiva con rotación de zonas (1 a 6)
-/// y plantilla completa del equipo seleccionado.
 class LineupScreen extends StatefulWidget {
   final MatchController controller;
 
@@ -109,7 +107,6 @@ class _LineupScreenState extends State<LineupScreen>
         ),
         child: Column(
           children: [
-            // Red superior
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 7),
@@ -141,7 +138,6 @@ class _LineupScreenState extends State<LineupScreen>
                 ],
               ),
             ),
-            // Línea de 3 metros
             Row(
               children: [
                 Expanded(child: Divider(color: sp.line, thickness: 1)),

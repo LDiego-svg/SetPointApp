@@ -1,8 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Tokens de color de SetPoint. Inspirados en la densidad y claridad de
-/// Sofascore: lienzo gris azulado, tarjetas planas y un único azul de marca.
 @immutable
 class SpColors extends ThemeExtension<SpColors> {
   final Color canvas;
@@ -19,20 +17,14 @@ class SpColors extends ThemeExtension<SpColors> {
   final Color header;
   final Color onHeader;
 
-  /// Acento para momentos clave (punto de set o de partido). Se usa poco a
-  /// propósito, para que destaque frente al azul de marca.
   final Color accent;
   final Color onAccent;
 
-  /// Superficies de vidrio (barra de navegación flotante, etc.).
   final Color glassFill;
   final Color glassBorder;
   final Color glassHighlight;
   final Color glassShadow;
 
-  /// Lente de vidrio que marca la pestaña activa dentro de la barra.
-  /// Cuerpo casi transparente, tinte de marca, contorno fino y brillo
-  /// especular del borde (la luz que «atrapa» el cristal).
   final Color lensFill;
   final Color lensTint;
   final Color lensBorder;
@@ -116,8 +108,6 @@ class SpColors extends ThemeExtension<SpColors> {
     lensRim: Color(0xB3FFFFFF),
   );
 
-  /// Paletas activas. Sin `SP_BRAND` son exactamente las de arriba (azul);
-  /// con `SP_BRAND` se recalculan los tonos de marca a partir de ese color.
   static final SpColors light = switch (_brandOverride) {
     null => _defaultLight,
     final c => _defaultLight._withBrand(
@@ -138,9 +128,7 @@ class SpColors extends ThemeExtension<SpColors> {
     ),
   };
 
-  /// Color de marca elegido al compilar:
-  /// `flutter build apk --release --dart-define=SP_BRAND=129A55`.
-  /// Acepta `RRGGBB`, `#RRGGBB` o `0xFFRRGGBB`. Vacío o inválido → azul.
+  // Opcional al compilar: --dart-define=SP_BRAND=RRGGBB
   static final Color? _brandOverride = _parseBrand(
     const String.fromEnvironment('SP_BRAND'),
   );
@@ -156,8 +144,6 @@ class SpColors extends ThemeExtension<SpColors> {
     return value == null ? null : Color(value);
   }
 
-  /// En modo claro la marca se usa como texto sobre blanco: si el color es
-  /// muy claro (p. ej. amarillo) se oscurece hasta que se lea bien.
   static Color _legibleOnLight(Color c) {
     var hsl = HSLColor.fromColor(c);
     while (hsl.toColor().computeLuminance() > 0.3 && hsl.lightness > 0.2) {
@@ -166,7 +152,6 @@ class SpColors extends ThemeExtension<SpColors> {
     return hsl.toColor();
   }
 
-  /// Variante luminosa para destacar sobre fondos oscuros.
   static Color _forDark(Color c) {
     final hsl = HSLColor.fromColor(c);
     return hsl
@@ -175,8 +160,6 @@ class SpColors extends ThemeExtension<SpColors> {
         .toColor();
   }
 
-  /// Tono muy oscuro del mismo color, para texto sobre la marca en modo
-  /// oscuro.
   static Color _deep(Color c) {
     final hsl = HSLColor.fromColor(c);
     return hsl.withLightness(0.12).withSaturation(0.55).toColor();
@@ -258,7 +241,6 @@ extension SpThemeX on BuildContext {
   TextTheme get type => Theme.of(this).textTheme;
 }
 
-/// Cifras tabulares: los marcadores no "bailan" al cambiar de 9 a 10.
 const List<FontFeature> kTabular = [FontFeature.tabularFigures()];
 
 class AppTheme {
@@ -290,8 +272,6 @@ class AppTheme {
   static ThemeData _build(Brightness brightness, SpColors c) {
     final base = ThemeData(brightness: brightness, useMaterial3: true);
 
-    // Escala tipográfica: tracking negativo en tamaños grandes,
-    // ligeramente positivo en los pequeños; interlineado inverso al tamaño.
     final text = base.textTheme.copyWith(
       displaySmall: _font(
         fontSize: 40,

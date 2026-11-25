@@ -4,7 +4,6 @@ import '../matches/matches_screen.dart';
 import '../training/training_screen.dart';
 import 'glass_nav_bar.dart';
 
-/// Navegación principal: Partidos y Entrenamiento.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -18,7 +17,6 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // El contenido pasa por detrás de la barra de vidrio.
       extendBody: true,
       body: IndexedStack(
         index: _index,

@@ -4,40 +4,21 @@ import 'package:flutter/widgets.dart';
 
 import '../models/match_model.dart';
 
-/// Fuente de datos de partidos. La UI solo conoce esta interfaz, así que la
-/// implementación de Firestore puede sustituirse (p. ej. en pruebas).
 abstract class MatchRepository {
-  /// Todos los partidos con sus equipos y torneo ya resueltos, en tiempo real.
   Stream<List<MatchModel>> watchMatches();
-
-  /// Un partido en tiempo real. Emite `null` si el documento no existe.
   Stream<MatchModel?> watchMatch(String id);
-
-  /// Persiste el estado de juego (marcador, sets, eventos, rotaciones).
   Future<void> saveMatchState(MatchModel match);
-
-  /// Crea el torneo, los dos equipos y el partido de ejemplo.
   Future<void> seedSampleData();
-
-  /// Equipos existentes, para elegirlos al crear un partido.
   Future<List<TeamInfo>> loadTeams();
-
-  /// Torneos existentes, para elegirlos al crear un partido.
   Future<List<TournamentInfo>> loadTournaments();
-
-  /// Crea un partido nuevo. [newTeams] y [newTournament] son los que se
-  /// dieron de alta en el formulario; los existentes no se reescriben.
   Future<void> createMatch(
     MatchModel match, {
     List<TeamInfo> newTeams = const [],
     TournamentInfo? newTournament,
   });
-
-  /// Borra un partido. Sus equipos y torneo se conservan.
   Future<void> deleteMatch(String id);
 }
 
-/// Combina los mapas crudos de las tres colecciones en modelos.
 List<MatchModel> buildMatches({
   required Map<String, Map<String, dynamic>> matches,
   required Map<String, Map<String, dynamic>> teams,
@@ -59,7 +40,6 @@ List<MatchModel> buildMatches({
         tournaments: tournamentInfos,
       ),
   ];
-  // En vivo primero, luego por empezar, luego finalizados; dentro de cada grupo por hora.
   int statusOrder(MatchStatus s) {
     switch (s) {
       case MatchStatus.live:
@@ -79,8 +59,6 @@ List<MatchModel> buildMatches({
   return list;
 }
 
-/// Emite cada vez que cualquiera de las fuentes cambia, una vez que todas
-/// emitieron al menos una vez.
 Stream<R> combineLatest3<A, B, C, R>(
   Stream<A> a,
   Stream<B> b,
@@ -134,7 +112,6 @@ Stream<R> combineLatest3<A, B, C, R>(
   return controller.stream;
 }
 
-/// Hace accesible el repositorio a todo el árbol de widgets.
 class RepositoryScope extends InheritedWidget {
   final MatchRepository repository;
 

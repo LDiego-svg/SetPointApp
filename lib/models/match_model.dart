@@ -36,7 +36,6 @@ extension MatchStatusExtension on MatchStatus {
   }
 }
 
-/// Formatea segundos como `MM:SS` (o `H:MM:SS` si supera una hora).
 String formatDurationSeconds(int totalSeconds) {
   final safe = totalSeconds < 0 ? 0 : totalSeconds;
   final hours = safe ~/ 3600;
@@ -53,7 +52,6 @@ String formatDurationSeconds(int totalSeconds) {
 enum PointActionType { attack, block, ace, opponentError }
 
 extension PointActionTypeExtension on PointActionType {
-  /// Nombre corto para botones y etiquetas.
   String get label {
     switch (this) {
       case PointActionType.attack:
@@ -90,11 +88,6 @@ extension PointActionTypeExtension on PointActionType {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Utilidades de lectura tolerante (los datos llegan de Firestore y pueden
-// editarse a mano desde la consola, así que nunca confiamos en el tipo exacto).
-// ---------------------------------------------------------------------------
-
 int _int(Object? v, [int fallback = 0]) {
   if (v is int) return v;
   if (v is num) return v.toInt();
@@ -127,7 +120,6 @@ List<Map<String, dynamic>> _maps(Object? v) {
       .toList();
 }
 
-/// Convierte "#FFB300", "FFB300" o un entero ARGB a un valor ARGB.
 int parseColor(Object? raw, int fallback) {
   if (raw is int) return raw;
   if (raw is String) {
@@ -153,10 +145,6 @@ String _deriveShort(String name, [String? explicit]) {
   return (trimmed.length >= 3 ? trimmed.substring(0, 3) : trimmed)
       .toUpperCase();
 }
-
-// ---------------------------------------------------------------------------
-// Catálogo: torneos y equipos (colecciones `tournaments` y `teams`).
-// ---------------------------------------------------------------------------
 
 class TournamentInfo {
   final String id;
@@ -298,12 +286,8 @@ class TeamInfo {
   ];
 }
 
-// ---------------------------------------------------------------------------
-// Estado del partido.
-// ---------------------------------------------------------------------------
-
 class PlayerPosition {
-  final int zone; // 1 to 6
+  final int zone;
   final int dorsal;
   final String name;
   final String role;
@@ -443,9 +427,6 @@ class SetStatsData {
   int localScore;
   int visitScore;
   bool isCompleted;
-
-  /// Duración acumulada del set en segundos. Cuando el set termina, guarda el
-  /// tiempo total que duró ese set.
   int durationSeconds;
 
   int localAttacks;
@@ -457,7 +438,6 @@ class SetStatsData {
   int localAces;
   int visitAces;
 
-  /// Errores no forzados cometidos por cada equipo
   int localUnforcedErrors;
   int visitUnforcedErrors;
 
@@ -577,10 +557,7 @@ class MatchSnapshot {
 }
 
 class MatchModel {
-  /// Cuántos eventos se guardan en Firestore (el feed solo muestra los últimos).
   static const int maxStoredEvents = 80;
-
-  /// Máximo de pasos que se pueden deshacer; los más antiguos se descartan.
   static const int maxUndoSteps = 50;
 
   final String id;
@@ -591,7 +568,7 @@ class MatchModel {
   TeamInfo localTeam;
   TeamInfo visitTeam;
 
-  int currentSet; // 1 to 5
+  int currentSet;
   int localSetsWon;
   int visitSetsWon;
   int localPoints;
@@ -607,13 +584,9 @@ class MatchModel {
   List<PlayerPosition> localLineup;
   List<PlayerPosition> visitLineup;
 
-  /// Versión del estado: cada guardado desde la app la incrementa. Sirve para
-  /// descartar datos remotos más viejos que el estado local y detectar
-  /// escrituras simultáneas desde otro dispositivo.
+  // Versión incremental para detectar escrituras simultáneas.
   int rev;
-
-  /// Sesión de la app que hizo el último guardado (vacío si vino del seed o
-  /// de la consola de Firebase).
+  int bestOf;
   String updatedBy;
 
   final List<MatchSnapshot> _undoStack = [];
@@ -642,6 +615,7 @@ class MatchModel {
     required this.visitLineup,
     this.rev = 0,
     this.updatedBy = '',
+    this.bestOf = 5,
   });
 
   String get localTeamName => localTeam.name;
@@ -658,8 +632,6 @@ class MatchModel {
 
   bool get isTimerRunning => isLive && setStartedAt != null;
 
-  /// Sets jugados o en juego (0 antes de empezar). No siempre se juegan los
-  /// cinco: el partido termina en cuanto un equipo gana tres.
   int get playedSetsCount {
     if (isUpcoming) return 0;
     if (isMatchFinished) {
@@ -668,7 +640,6 @@ class MatchModel {
     return currentSet.clamp(1, setsHistory.length);
   }
 
-  /// Segundos transcurridos de un set específico (1..5).
   int setElapsedSeconds(int setNumber, [DateTime? now]) {
     if (setNumber < 1 || setNumber > setsHistory.length) return 0;
     final s = setsHistory[setNumber - 1];
@@ -682,10 +653,8 @@ class MatchModel {
     return s.durationSeconds + (delta > 0 ? delta : 0);
   }
 
-  /// Segundos transcurridos del set en juego (o del último set si ya terminó).
   int get currentSetElapsedSeconds => setElapsedSeconds(currentSet);
 
-  /// Duración acumulada de todos los sets jugados o en juego.
   int get totalMatchElapsedSeconds {
     final now = DateTime.now();
     var total = 0;
@@ -697,28 +666,28 @@ class MatchModel {
 
   bool get canUndo => _undoStack.isNotEmpty;
 
-  /// Copia de la pila de deshacer, para conservarla al cerrar la pantalla.
   List<MatchSnapshot> get undoHistory => List.of(_undoStack);
 
-  /// Sustituye la pila de deshacer por una conservada con [undoHistory].
   void restoreUndoHistory(List<MatchSnapshot> history) {
     _undoStack
       ..clear()
       ..addAll(history);
   }
 
-  int get targetPointsForCurrentSet => currentSet == 5 ? 15 : 25;
+  int get setsToWin => bestOf ~/ 2 + 1;
+
+  int get targetPointsForCurrentSet => currentSet == bestOf ? 15 : 25;
+
+  void changeBestOf(int value) {
+    bestOf = value == 3 ? 3 : 5;
+    if (isLive && (localSetsWon >= setsToWin || visitSetsWon >= setsToWin)) {
+      isMatchFinished = true;
+      setStartedAt = null;
+    }
+  }
 
   SetStatsData get currentSetData => setsHistory[currentSet - 1];
 
-  // -------------------------------------------------------------------------
-  // Serialización
-  // -------------------------------------------------------------------------
-
-  /// Campos completos del documento `matches/{id}`. Incluye tanto referencias
-  /// a colecciones (`tournamentId`, `homeTeamId`, `awayTeamId`) como campos
-  /// directos (`localName`, `visitName`, `tournament`, etc.) para que puedas
-  /// editarlos directamente en el documento del partido desde Firebase Console.
   Map<String, dynamic> toMap() => {
     'tournamentId': tournament.id,
     'tournament': tournament.name,
@@ -736,7 +705,6 @@ class MatchModel {
     ...toStateMap(),
   };
 
-  /// Estado que cambia durante el juego o desde la edición rápida.
   Map<String, dynamic> toStateMap() => {
     'localName': localTeam.name,
     'visitName': visitTeam.name,
@@ -765,6 +733,7 @@ class MatchModel {
     'visitLineup': visitLineup.map((p) => p.toMap()).toList(),
     'rev': rev,
     'updatedBy': updatedBy,
+    'bestOf': bestOf,
   };
 
   static List<PlayerPosition> _defaultLineupFor(TeamInfo team) => [
@@ -895,7 +864,6 @@ class MatchModel {
     final localPoints = _int(map['localPoints']);
     final visitPoints = _int(map['visitPoints']);
 
-    // Soportar tanto `localSets` / `visitSets` como `localSetsWon` / `visitSetsWon`.
     final localSetsWon = map.containsKey('localSets')
         ? _int(map['localSets'], _int(map['localSetsWon']))
         : _int(map['localSetsWon']);
@@ -940,8 +908,7 @@ class MatchModel {
             : SetStatsData(setNumber: i + 1),
     ];
 
-    // Mantener el parcial del set actual sincronizado con localPoints/visitPoints
-    // por si se modificaron directamente desde Firebase Console.
+    // Sincroniza el parcial del set actual si los puntos se editaron manualmente.
     if (!isMatchFinished && currentSet >= 1 && currentSet <= 5) {
       final activeSet = sets[currentSet - 1];
       activeSet.localScore = localPoints;
@@ -1004,11 +971,10 @@ class MatchModel {
           : _defaultLineupFor(away),
       rev: _int(map['rev']),
       updatedBy: _str(map['updatedBy']),
+      bestOf: _int(map['bestOf'], 5) == 3 ? 3 : 5,
     );
   }
 
-  /// Aplica datos que llegan de la base de datos conservando la pila de
-  /// deshacer local.
   void applyRemote(MatchModel other) {
     tournament = other.tournament;
     stage = other.stage;
@@ -1032,10 +998,9 @@ class MatchModel {
     visitLineup = other.visitLineup;
     rev = other.rev;
     updatedBy = other.updatedBy;
+    bestOf = other.bestOf;
   }
 
-  /// Vuelve el partido a 0-0 "Por empezar" sin tocar equipos, torneo, sede
-  /// ni horario. Vacía también la pila de deshacer.
   void resetGame() {
     currentSet = 1;
     localSetsWon = 0;
@@ -1053,10 +1018,6 @@ class MatchModel {
     visitLineup = _defaultLineupFor(visitTeam);
     _undoStack.clear();
   }
-
-  // -------------------------------------------------------------------------
-  // Lógica de juego
-  // -------------------------------------------------------------------------
 
   void _saveSnapshot() {
     if (_undoStack.length >= maxUndoSteps) {
@@ -1082,7 +1043,6 @@ class MatchModel {
     );
   }
 
-  /// Inicia el partido desde el estado "Por empezar" y arranca el reloj del 1.º set.
   void startMatch([DateTime? now]) {
     if (isMatchStarted || isMatchFinished) return;
     _saveSnapshot();
@@ -1094,7 +1054,6 @@ class MatchModel {
     }
   }
 
-  /// Pausa o reanuda el reloj del set en curso.
   void toggleTimer([DateTime? now]) {
     if (!isLive) return;
     final t = now ?? DateTime.now();
@@ -1137,20 +1096,16 @@ class MatchModel {
     if (!isMatchStarted || isMatchFinished) {
       setStartedAt = null;
     } else if (snap.currentSet != prevSet || prevWasFinished) {
-      // Si se deshizo el punto que cerró el set o el partido, reanudamos el
-      // reloj del set previo a partir del tiempo que llevaba acumulado.
+      // Al reabrir un set o partido cerrado, se reanuda el reloj desde lo acumulado.
       setStartedAt = DateTime.now();
     } else {
-      // Si se deshizo un punto dentro del mismo set, el reloj del set sigue
-      // corriendo sin retroceder.
+      // Dentro del mismo set el reloj no retrocede.
       setsHistory[currentSet - 1].durationSeconds = liveDurationBeforeUndo;
       setStartedAt = liveStartedAtBeforeUndo ?? snap.setStartedAt;
     }
     return true;
   }
 
-  /// Rotación reglamentaria en sentido horario:
-  /// Zona 2 -> Zona 1 (Saque), Z1 -> Z6, Z6 -> Z5, Z5 -> Z4, Z4 -> Z3, Z3 -> Z2.
   void rotateTeamLineup(bool isLocal) {
     final current = isLocal ? localLineup : visitLineup;
     final Map<int, PlayerPosition> byZone = {
@@ -1183,7 +1138,6 @@ class MatchModel {
     }
     setStartedAt ??= now;
 
-    // Si el equipo que anota no tenía el saque (Side-out), recupera saque y rota
     if (isLocal != isLocalServing) {
       isLocalServing = isLocal;
       rotateTeamLineup(isLocal);
@@ -1287,7 +1241,6 @@ class MatchModel {
     );
 
     if (setWon) {
-      // El reloj del set se detiene cuando un equipo gana el set y guarda lo que duró.
       setStats.durationSeconds = elapsedThisSet;
       setStats.isCompleted = true;
       if (isLocal) {
@@ -1296,7 +1249,9 @@ class MatchModel {
         visitSetsWon++;
       }
 
-      if (localSetsWon == 3 || visitSetsWon == 3 || currentSet == 5) {
+      if (localSetsWon >= setsToWin ||
+          visitSetsWon >= setsToWin ||
+          currentSet >= bestOf) {
         isMatchFinished = true;
         setStartedAt = null;
       } else {
@@ -1309,7 +1264,6 @@ class MatchModel {
     }
   }
 
-  /// Devuelve las estadísticas acumuladas ('ALL') o de un set específico (1..5)
   SetStatsData getStatsForFilter(int setFilterIndex) {
     if (setFilterIndex >= 1 && setFilterIndex <= 5) {
       return setsHistory[setFilterIndex - 1];

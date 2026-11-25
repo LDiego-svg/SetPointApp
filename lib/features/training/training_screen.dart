@@ -6,8 +6,6 @@ import 'agenda/schedule_store.dart';
 import 'exercises_view.dart';
 import 'training_progress_store.dart';
 
-/// Módulo de entrenamiento: agenda semanal por persona y ejercicios del día.
-/// Todo se guarda en el teléfono; no depende de Firebase ni de partidos.
 class TrainingScreen extends StatelessWidget {
   final TrainingProgressStore store;
   final ScheduleStore scheduleStore;

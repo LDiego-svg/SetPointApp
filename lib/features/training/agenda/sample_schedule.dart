@@ -1,8 +1,5 @@
 import 'schedule_models.dart';
 
-/// Personas de ejemplo con rutinas distintas, para que al cambiar de persona
-/// se note cómo cambia el horario. Comparten el entrenamiento de equipo y el
-/// partido del sábado; el resto es individual.
 List<Athlete> sampleAthletes() {
   var n = 0;
   ScheduleBlock b(

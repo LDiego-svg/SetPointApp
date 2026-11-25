@@ -2,7 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
 
-/// Se muestra cuando Firebase todavía no está configurado.
 class FirebaseSetupScreen extends StatelessWidget {
   final Object? error;
 

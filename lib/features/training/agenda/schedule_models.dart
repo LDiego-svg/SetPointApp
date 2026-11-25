@@ -1,7 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-/// Tipos de actividad de la agenda. Cada uno tiene etiqueta, icono y color
-/// propios (el color es dato de la actividad, como el de un equipo).
 enum ActivityType {
   entrenamiento('Entrenamiento', Icons.sports_volleyball_rounded, 0xFF3449E8),
   fisico('Físico', Icons.fitness_center_rounded, 0xFFFF6B00),
@@ -36,20 +34,16 @@ const weekdayNames = [
 ];
 const weekdayLetters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-/// 450 → "07:30".
 String formatMinutes(int minutes) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${two(minutes ~/ 60)}:${two(minutes % 60)}';
 }
 
-/// Una actividad de la rutina semanal: se repite cada semana en su día.
 class ScheduleBlock {
   final String id;
-
-  /// 1 = lunes … 7 = domingo (como `DateTime.weekday`).
+  // 1 = lunes .. 7 = domingo
   final int weekday;
-
-  /// Minutos desde medianoche.
+  // Minutos desde medianoche
   final int start;
   final int end;
   final ActivityType type;
@@ -107,7 +101,6 @@ class ScheduleBlock {
   }
 }
 
-/// Persona con su rutina semanal (jugador, entrenador, etc.).
 class Athlete {
   final String id;
   final String name;
@@ -129,7 +122,6 @@ class Athlete {
     return (first + last).toUpperCase();
   }
 
-  /// Actividades de un día, ordenadas por hora.
   List<ScheduleBlock> blocksFor(int weekday) =>
       blocks.where((b) => b.weekday == weekday).toList()
         ..sort((a, b) => a.start.compareTo(b.start));

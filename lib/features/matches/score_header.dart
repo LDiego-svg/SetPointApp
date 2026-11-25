@@ -6,20 +6,14 @@ import '../../core/widgets/sp_widgets.dart';
 import '../../models/match_model.dart';
 import 'match_controller.dart';
 
-/// Etiqueta `Hero` del escudo de un equipo: el escudo de la lista "vuela"
-/// hasta la cabecera del partido al abrirlo.
 Object crestHeroTag(String matchId, {required bool isLocal}) =>
     'crest-$matchId-${isLocal ? 'local' : 'visit'}';
 
-/// Escudo que vuela entre la lista y la cabecera. Las dos puntas usan este
-/// mismo widget para que el vuelo sea continuo en ambos sentidos.
 class CrestHero extends StatelessWidget {
   final String matchId;
   final bool isLocal;
   final TeamInfo team;
   final double size;
-
-  /// Halo del color del equipo (solo en la cabecera).
   final bool halo;
 
   const CrestHero({
@@ -42,9 +36,6 @@ class CrestHero extends StatelessWidget {
     );
   }
 
-  /// Durante el vuelo se ve siempre el escudo grande (con sus siglas),
-  /// escalado, y el halo aparece o se desvanece con la transición: así no se
-  /// queda atrás ni cambia de golpe al llegar.
   Widget _shuttle(
     BuildContext context,
     Animation<double> animation,
@@ -52,8 +43,7 @@ class CrestHero extends StatelessWidget {
     BuildContext fromContext,
     BuildContext toContext,
   ) {
-    // El vuelo ocurre en una capa sin `Material` encima: sin esto, Flutter
-    // marca el texto de las siglas con su subrayado amarillo de aviso.
+    // Material transparente evita el subrayado amarillo de debug durante el Hero.
     return Material(
       type: MaterialType.transparency,
       child: AnimatedBuilder(
@@ -106,28 +96,24 @@ class _Crest extends StatelessWidget {
   }
 }
 
-/// Texto de alerta de punto de set / partido, o null si no aplica.
 String? setPointAlert(MatchModel m) {
   if (!m.isLive) return null;
   final target = m.targetPointsForCurrentSet;
   final l = m.localPoints;
   final v = m.visitPoints;
   if (l >= target - 1 && l - v >= 1) {
-    return m.localSetsWon == 2
+    return m.localSetsWon == m.setsToWin - 1
         ? 'Punto de partido para ${m.localTeamName}'
         : 'Punto de set para ${m.localTeamName}';
   }
   if (v >= target - 1 && v - l >= 1) {
-    return m.visitSetsWon == 2
+    return m.visitSetsWon == m.setsToWin - 1
         ? 'Punto de partido para ${m.visitTeamName}'
         : 'Punto de set para ${m.visitTeamName}';
   }
   return null;
 }
 
-/// Cabecera del partido: escudos, marcador y estado. El fondo lleva un
-/// degradado con el color de cada equipo, así cada partido tiene su propia
-/// personalidad. En vivo, los puntos del set son lo más grande.
 class ScoreHeader extends StatelessWidget {
   final MatchModel match;
   final MatchController controller;
@@ -152,15 +138,12 @@ class ScoreHeader extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(color: sp.card),
-      // Un resplandor del color de cada equipo detrás de su escudo.
       child: DecoratedBox(
         decoration: BoxDecoration(gradient: glow(m.localTeam.colorValue, -0.7)),
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: glow(m.visitTeam.colorValue, 0.7),
           ),
-          // Se funde con la tarjeta arriba (bajo la barra) y abajo (donde
-          // empiezan las pestañas): sin escalones en los bordes.
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -248,7 +231,6 @@ class ScoreHeader extends StatelessWidget {
   }
 }
 
-/// Columna central: marcador grande y estado del partido.
 class _CenterScore extends StatelessWidget {
   final MatchModel match;
   final MatchController controller;
@@ -264,7 +246,6 @@ class _CenterScore extends StatelessWidget {
     );
     final status = TextStyle(fontWeight: FontWeight.w700, fontSize: 13);
 
-    // En vivo manda el set en juego (puntos); si no, los sets ganados.
     final local = m.isLive ? m.localPoints : m.localSetsWon;
     final visit = m.isLive ? m.visitPoints : m.visitSetsWon;
 
@@ -347,7 +328,6 @@ class _CenterScore extends StatelessWidget {
   }
 }
 
-/// Sets ganados, en pequeño, mientras el partido está en vivo.
 class _SetsPill extends StatelessWidget {
   final int local;
   final int visit;
@@ -435,8 +415,6 @@ class _TeamColumn extends StatelessWidget {
   }
 }
 
-/// Aviso de punto de set o de partido con el color de acento y un brillo que
-/// late suavemente. Con "reducir movimiento" se queda fijo.
 class _SetPointBadge extends StatefulWidget {
   final String text;
   const _SetPointBadge({required this.text});
@@ -515,8 +493,6 @@ class _SetPointBadgeState extends State<_SetPointBadge>
   }
 }
 
-/// Número que rueda hacia arriba al cambiar, con un pequeño "pop" de
-/// escala: comunica qué cambió. Sin animación si se pide reducir movimiento.
 class _AnimatedNumber extends StatelessWidget {
   final int value;
   final TextStyle style;

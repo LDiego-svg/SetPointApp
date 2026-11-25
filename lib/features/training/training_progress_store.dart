@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Guarda en el dispositivo qué ejercicios de entrenamiento están completados.
-///
-/// El progreso es individual, así que vive en local (no en Firestore).
 class TrainingProgressStore {
   static const _completedKey = 'training.completedDrillIds';
 

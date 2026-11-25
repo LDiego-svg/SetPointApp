@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-/// Pulso de 1 s compartido por todos los [LiveClock], para que los relojes
-/// de la pantalla avancen a la vez. Solo corre mientras alguien lo escucha.
 class _SecondPulse extends ChangeNotifier {
   Timer? _timer;
 
@@ -28,10 +26,6 @@ class _SecondPulse extends ChangeNotifier {
 
 final _pulse = _SecondPulse();
 
-/// Reconstruye solo su [builder] una vez por segundo mientras [enabled] (p. ej.
-/// el cronómetro del set en marcha), en vez de redibujar la pantalla entera.
-///
-/// Se pausa cuando no se ve: pestaña oculta o pantalla tapada por otra ruta.
 class LiveClock extends StatefulWidget {
   final bool enabled;
   final WidgetBuilder builder;

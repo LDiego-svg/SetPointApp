@@ -1,8 +1,5 @@
 import '../models/match_model.dart';
 
-/// Datos del partido de ejemplo. Solo se usan una vez para poblar la base de
-/// datos (botón "Crear partido de ejemplo"); a partir de ahí todo se lee y se
-/// edita desde Firestore.
 class SeedData {
   static TournamentInfo tournament() => const TournamentInfo(
     id: 'liga-universitaria-voleibol',
@@ -88,14 +85,11 @@ class SeedData {
       ),
   ];
 
-  /// Fecha de inicio programada: día 24 a las 8:30 AM (hora local).
   static DateTime scheduledStartTime([int hour = 8, int minute = 30]) {
     final now = DateTime.now();
     return DateTime(now.year, now.month, 24, hour, minute);
   }
 
-  /// Partido nuevo "por empezar" entre dos equipos. Lo usan los datos de
-  /// ejemplo y el formulario de nuevo partido.
   static MatchModel match(
     TournamentInfo tournament,
     TeamInfo home,

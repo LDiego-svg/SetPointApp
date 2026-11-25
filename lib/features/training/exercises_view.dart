@@ -10,7 +10,7 @@ import 'training_progress_store.dart';
 class TrainingDrill {
   final String id;
   final String title;
-  final String category; // 'Saque', 'Recepción', 'Remate', 'Físico'
+  final String category;
   final String setsAndReps;
   final String intensity;
   final String restSuggestion;
@@ -27,8 +27,6 @@ class TrainingDrill {
   });
 }
 
-/// Pestaña "Ejercicios": lista de ejercicios del día con su progreso y el
-/// temporizador de descanso entre series.
 class ExercisesView extends StatefulWidget {
   final TrainingProgressStore store;
 

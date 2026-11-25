@@ -85,9 +85,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 20,
-        // Tocar el logo abre la administración de partidos (crear, borrar,
-        // restaurar ejemplos). Acceso discreto a propósito: no añade botones
-        // a la pantalla principal.
         title: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _openManage,
@@ -153,7 +150,6 @@ class _MatchesScreenState extends State<MatchesScreen> {
             _ => all,
           };
 
-          // Agrupar por torneo conservando el orden.
           final groups = <String, List<MatchModel>>{};
           for (final m in visible) {
             groups.putIfAbsent(m.tournament.id, () => []).add(m);
@@ -306,8 +302,6 @@ String _formatTimeAmPm(DateTime t) {
   return '$h:$m $period';
 }
 
-/// Fila de partido estilo Sofascore:
-/// [hora / estado] | [equipos] [sets] [parciales]
 class _MatchRow extends StatelessWidget {
   final MatchModel match;
   final int setColumns;

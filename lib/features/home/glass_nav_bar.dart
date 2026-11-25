@@ -7,11 +7,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_widgets.dart';
 import '../../core/widgets/sp_widgets.dart';
 
-/// Navegación flotante sin barra: solo los destinos y una lente de vidrio que
-/// marca la pestaña activa y se desliza entre ellos. Se usa con
-/// `extendBody: true` en el `Scaffold` para que el contenido pase por detrás.
-///
-/// Los colores y textos salen de `navigationBarTheme`.
 class GlassNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
@@ -31,8 +26,6 @@ class GlassNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    // Sin barra, los textos quedan sobre el contenido: detrás de ellos el
-    // contenido se difumina de forma progresiva hacia el borde inferior.
     return Stack(
       children: [
         const Positioned.fill(child: _ScrollEdgeBlur()),
@@ -52,9 +45,6 @@ class GlassNavBar extends StatelessWidget {
                           constraints.maxWidth / destinations.length;
                       return Stack(
                         children: [
-                          // Un toque no trae inercia: se asienta sin rebote.
-                          // Parte siempre de la posición actual, así que se
-                          // puede redirigir a mitad del recorrido.
                           TweenAnimationBuilder<double>(
                             tween: Tween(end: selectedIndex.toDouble()),
                             duration: reduceMotion
@@ -62,8 +52,6 @@ class GlassNavBar extends StatelessWidget {
                                 : const Duration(milliseconds: 420),
                             curve: Curves.easeOutCubic,
                             builder: (context, pos, child) {
-                              // Se estira en horizontal mientras viaja, como
-                              // una gota, y recupera su forma al llegar.
                               final d = (pos - selectedIndex).abs().clamp(
                                 0.0,
                                 1.0,
@@ -113,15 +101,9 @@ class GlassNavBar extends StatelessWidget {
   }
 }
 
-/// Difuminado progresivo tras la navegación, como el «scroll edge effect» de
-/// iOS: franjas de desenfoque que se acumulan hacia abajo (más borroso cuanto
-/// más cerca del borde) y un velo del lienzo que suaviza los escalones.
 class _ScrollEdgeBlur extends StatelessWidget {
   const _ScrollEdgeBlur();
 
-  // (fracción desde arriba donde empieza la franja, sigma). Las franjas se
-  // acumulan; con incrementos pequeños e iguales el borde de cada una no se
-  // nota (al fondo queda un desenfoque total de ~2).
   static const _bands = [(0.0, 1.0), (0.25, 1.0), (0.5, 1.0), (0.75, 1.0)];
 
   @override

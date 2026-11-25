@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/theme/app_theme.dart';
 import 'schedule_models.dart';
 
-/// Avatar con las iniciales de la persona.
 class PersonAvatar extends StatelessWidget {
   final Athlete athlete;
   final double size;
@@ -32,8 +31,6 @@ class PersonAvatar extends StatelessWidget {
   }
 }
 
-/// Hoja para cambiar de persona, agregar una nueva o borrarla. Los cambios se
-/// avisan al padre con los callbacks; la hoja refleja la lista actualizada.
 Future<void> showPersonSheet(
   BuildContext context, {
   required List<Athlete> athletes,
@@ -183,8 +180,6 @@ class _PersonSheetState extends State<_PersonSheet> {
   }
 }
 
-/// Diálogo con sus propios controladores (se liberan al desmontarse, no al
-/// cerrar, porque la animación de salida aún los usa).
 class _NewPersonDialog extends StatefulWidget {
   const _NewPersonDialog();
 

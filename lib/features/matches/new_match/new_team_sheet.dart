@@ -5,8 +5,6 @@ import '../../../core/widgets/sp_widgets.dart';
 import '../../../models/match_model.dart';
 import 'ids.dart';
 
-/// Hoja para dar de alta un equipo: nombre, siglas, color y jugadores.
-/// Devuelve el equipo (sin guardarlo) o null si se cancela.
 Future<TeamInfo?> showNewTeamSheet(
   BuildContext context, {
   required Set<String> takenIds,
@@ -19,7 +17,6 @@ Future<TeamInfo?> showNewTeamSheet(
   );
 }
 
-/// Colores de equipo para elegir (son datos del equipo, no del tema).
 const _teamColors = [
   0xFFF2A900, 0xFFFF6B00, 0xFFE5243B, 0xFF9E1B32, 0xFFE91E63, 0xFF7B2CBF, //
   0xFF3449E8, 0xFF1E6FD9, 0xFF0F9D9A, 0xFF007A33, 0xFF6D4C41, 0xFF1D1F24, //
@@ -47,7 +44,7 @@ class _NewTeamSheetState extends State<_NewTeamSheet> {
     super.dispose();
   }
 
-  /// Una línea por jugador: "10 J. Martínez, Armador" (el rol es opcional).
+  // Formato por línea: "10 J. Martínez, Armador" (rol opcional).
   static List<TeamPlayer> _parsePlayers(String text) {
     final line = RegExp(r'^\s*(\d+)\s+([^,]+?)\s*(?:,\s*(.+?))?\s*$');
     return [

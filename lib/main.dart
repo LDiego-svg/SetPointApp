@@ -11,8 +11,6 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // La app se dibuja también detrás de la barra de navegación de Android
-  // (si no, el sistema rellena esa franja de negro).
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   MatchRepository? repository;
@@ -54,8 +52,6 @@ class SetPointApp extends StatelessWidget {
     );
   }
 
-  /// Barra de navegación del sistema transparente, con iconos que contrastan
-  /// con el tema.
   static SystemUiOverlayStyle _systemBars(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return SystemUiOverlayStyle(

@@ -2,8 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_theme.dart';
 
-/// Escudo del equipo: círculo con el color del equipo (viene de la base de
-/// datos) y sus siglas. Sustituye a los logos que muestra Sofascore.
 class TeamCrest extends StatelessWidget {
   final String shortName;
   final Color color;
@@ -49,8 +47,6 @@ class TeamCrest extends StatelessWidget {
   }
 }
 
-/// Punto rojo que late suavemente mientras el partido está en vivo.
-/// Con "reducir movimiento" activado se queda fijo.
 class LiveDot extends StatefulWidget {
   final double size;
   const LiveDot({super.key, this.size = 7});
@@ -99,8 +95,6 @@ class _LiveDotState extends State<LiveDot> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Respuesta inmediata al presionar: se encoge al tocar (pointer-down), no al
-/// soltar, y vuelve con un muelle sin rebote.
 class Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -146,8 +140,6 @@ class _PressableState extends State<Pressable> {
   }
 }
 
-/// Tarjeta de sección estilo Sofascore: superficie plana, título discreto
-/// dentro de la tarjeta y una acción opcional a la derecha.
 class SectionCard extends StatelessWidget {
   final String? title;
   final Widget? trailing;
@@ -190,7 +182,6 @@ class SectionCard extends StatelessWidget {
   }
 }
 
-/// Selector segmentado tipo "píldoras" (filtros de sets, categorías...).
 class PillTabs extends StatelessWidget {
   final List<String> labels;
   final int selected;

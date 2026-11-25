@@ -7,9 +7,6 @@ import '../../../data/match_repository.dart';
 import '../../../models/match_model.dart';
 import 'new_match_screen.dart';
 
-/// Administración de partidos: crear, borrar y restaurar los de ejemplo.
-/// Se abre tocando el logo de la lista de partidos, así la pantalla
-/// principal no se llena de botones.
 class ManageMatchesScreen extends StatefulWidget {
   final MatchRepository repository;
   const ManageMatchesScreen({super.key, required this.repository});
